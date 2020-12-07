@@ -110,7 +110,7 @@ export async function http_call<In, Out>(
       // const copied_options1 = { ...{ method: 'post' }, ...options }
       // delete copied_options.timeout
       const url_with_params = options.params ? build_url(url, options.params) : url
-      const method = options.method ?  options.method  : 'post'
+      const method = (options.method ?  options.method  : 'post').toUpperCase()
       const result = await fetch(
         url_with_params,
         {
