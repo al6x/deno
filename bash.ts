@@ -25,5 +25,6 @@ export async function run(
   const { code } = await process.status()
   const output = decoder.decode(await process.output())
   const stderr = decoder.decode(await process.stderrOutput())
+  process.close()
   return { code, output, stderr }
 }

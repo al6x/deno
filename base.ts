@@ -111,7 +111,7 @@ export async function http_call<In, Out>(
       // delete copied_options.timeout
       const url_with_params = options.params ? build_url(url, options.params) : url
       const method = (options.method ?  options.method  : 'post').toUpperCase()
-      const result = await fetch(
+      const response = await fetch(
         url_with_params,
         {
           method,
@@ -119,9 +119,9 @@ export async function http_call<In, Out>(
           body:    method != 'get' ? JSON.stringify(body) : undefined
         }
       )
-      if (!result.ok)
-        throw new Error(`can't ${method} ${url} ${result.status} ${result.statusText}`)
-      return await result.json()
+      if (!response.ok)
+        throw new Error(`can't ${method} ${url} ${response.status} ${response.statusText}`)
+      return await response.json()
     } catch (e) {
       throw e
     }
