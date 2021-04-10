@@ -8,7 +8,7 @@ export class PersistentVariable<T extends {}> {
 
   async read(): Promise<T> {
     try {
-      return await fs.read_json<T>(this.fname)
+      return await fs.readJson<T>(this.fname)
     } catch(e) {
       // A new default value should be created every time, because
       // otherwise equality would fail `changed_value == await variable.read()`
@@ -18,5 +18,5 @@ export class PersistentVariable<T extends {}> {
 
   async delete(): Promise<void> { await fs.remove(this.fname) }
 
-  async write(value: T): Promise<void> { await fs.write_json(this.fname, value) }
+  async write(value: T): Promise<void> { await fs.writeJson(this.fname, value) }
 }

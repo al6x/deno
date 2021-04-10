@@ -23,28 +23,28 @@ function set<V>(
     if (!store.has(key)) (<{ length: number }>mmap).length += 1
     store.set(key, value)
   } else {
-    let next_store = store.get(key)
-    if (next_store === undefined) {
-      next_store = new Map<SimpleTypes, V>()
-      store.set(key, next_store)
+    let nextStore = store.get(key)
+    if (nextStore === undefined) {
+      nextStore = new Map<SimpleTypes, V>()
+      store.set(key, nextStore)
     }
-    set(i + 1, keys, value, next_store, mmap)
+    set(i + 1, keys, value, nextStore, mmap)
   }
 }
 
 function has(i: number, keys: SimpleTypes[], store: Map<SimpleTypes, something>): boolean {
   if (i == keys.length - 1) return store.has(keys[i])
   else {
-    const next_store = store.get(keys[i])
-    return next_store !== undefined ? has(i + 1, keys, next_store) : false
+    const nextStore = store.get(keys[i])
+    return nextStore !== undefined ? has(i + 1, keys, nextStore) : false
   }
 }
 
 function get<V>(i: number, keys: SimpleTypes[], store: Map<SimpleTypes, something>): V | undefined {
   if (i == keys.length - 1) return store.get(keys[i])
   else {
-    const next_store = store.get(keys[i])
-    return next_store !== undefined ? get(i + 1, keys, next_store) : undefined
+    const nextStore = store.get(keys[i])
+    return nextStore !== undefined ? get(i + 1, keys, nextStore) : undefined
   }
 }
 
@@ -60,10 +60,10 @@ function del<V>(
     }
     return v
   } else {
-    let next_store = store.get(key)
-    if (next_store === undefined) return undefined
-    const v = del(i + 1, keys, next_store, mmap)
-    if (next_store.length == 0) store.delete(key)
+    let nextStore = store.get(key)
+    if (nextStore === undefined) return undefined
+    const v = del(i + 1, keys, nextStore, mmap)
+    if (nextStore.length == 0) store.delete(key)
     return v
   }
 }

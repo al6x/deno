@@ -1,9 +1,9 @@
-import { assert, test, sort_by, round, fill, filter_map, find_index, p } from './base.ts'
+import { assert, test, sortBy, round, fill, filterMap, findIndex, p } from './base.ts'
 
 
 // median --------------------------------------------------------------------------------
-export function median(values: number[], is_sorted = false): number {
-  return quantile(values, .5, is_sorted)
+export function median(values: number[], isSorted = false): number {
+  return quantile(values, .5, isSorted)
   // if (values.length == 0 ) return 0
   // values = [...values]
   // values.sort(function(a, b) { return a-b })
@@ -22,8 +22,8 @@ export function mean(values: number[]): number {
 
 
 // quantile ------------------------------------------------------------------------------
-export function quantile(values: number[], q: number, is_sorted = false): number {
-  const sorted = is_sorted ? values : [...values].sort((a, b) => a - b)
+export function quantile(values: number[], q: number, isSorted = false): number {
+  const sorted = isSorted ? values : [...values].sort((a, b) => a - b)
   const pos = (sorted.length - 1) * q
   const base = Math.floor(pos)
   const rest = pos - base
@@ -35,35 +35,35 @@ export function quantile(values: number[], q: number, is_sorted = false): number
 }
 
 
-// min_max_norm --------------------------------------------------------------------------
-export function min_max_norm(values: number[], min: number, max: number): number[] {
+// minMaxNorm --------------------------------------------------------------------------
+export function minMaxNorm(values: number[], min: number, max: number): number[] {
   return values.map((v) => (v - min) / (max - min))
 }
 
 
-// map_with_rank -------------------------------------------------------------------------
-// Attach to every element its rank in the ordered list, ordered according to `order_by` function.
-export function map_with_rank<V, R>(list: V[], order_by: (v: V) => number, map: (v: V, rank: number) => R): R[] {
+// mapWithRank -------------------------------------------------------------------------
+// Attach to every element its rank in the ordered list, ordered according to `orderBy` function.
+export function mapWithRank<V, R>(list: V[], orderBy: (v: V) => number, map: (v: V, rank: number) => R): R[] {
   // Sorting accourding to rank
-  const list_with_index = list.map((v, i) => ({ v, original_i: i, order_by: order_by(v) }))
-  const sorted = sort_by(list_with_index, ({ order_by }) => order_by)
+  const listWithIndex = list.map((v, i) => ({ v, originalI: i, orderBy: orderBy(v) }))
+  const sorted = sortBy(listWithIndex, ({ orderBy }) => orderBy)
 
-  // Adding rank, if values returned by `order_by` are the same, the rank also the same
-  const sorted_with_rank: { v: V, original_i: number, order_by: number, rank: number }[] = []
+  // Adding rank, if values returned by `orderBy` are the same, the rank also the same
+  const sortedWithRank: { v: V, originalI: number, orderBy: number, rank: number }[] = []
   let rank = 1
   for (let i = 0; i < sorted.length; i++) {
     const current = sorted[i]
-    if (i > 0 && current.order_by != sorted[i - 1].order_by) rank++
-    sorted_with_rank.push({ ...current, rank })
+    if (i > 0 && current.orderBy != sorted[i - 1].orderBy) rank++
+    sortedWithRank.push({ ...current, rank })
   }
 
   // Restoring original order and mapping
-  const original_with_rank = sort_by(sorted_with_rank, ({ original_i }) => original_i)
-  return original_with_rank.map(({ v, rank }) => map(v, rank))
+  const originalWithRank = sortBy(sortedWithRank, ({ originalI }) => originalI)
+  return originalWithRank.map(({ v, rank }) => map(v, rank))
 }
 test(() => {
   assert.equal(
-    map_with_rank(
+    mapWithRank(
       [ 4,        2,        3,        4,        5,        7,        5], (v) => v, (v, r) => [v, r]
     ),
     [ [ 4, 3 ], [ 2, 1 ], [ 3, 2 ], [ 4, 3 ], [ 5, 4 ], [ 7, 5 ], [ 5, 4 ] ]
@@ -71,16 +71,16 @@ test(() => {
 })
 
 
-// linear_regression ---------------------------------------------------------------------
+// linearRegression ---------------------------------------------------------------------
 // https://stackoverflow.com/questions/6195335/linear-regression-in-javascript
 // return (a, b) that minimize
-// sum_i r_i * (a*x_i+b - y_i)^2
+// sumI rI * (a*xI+b - yI)^2
 //
 // Is wrong for EXPE
-function linear_regression_wrong(x_y:   [number, number][]): [number, number]
-function linear_regression_wrong(x_y_r: [number, number, number][]): [number, number]
-function linear_regression_wrong(x_y_r: [number, number, number?][]): [number, number] {
-  const xyr = x_y_r.map(([x, y, r]) => [x, y, r === undefined ? 1 : r])
+function linearRegressionWrong(xy:  [number, number][]): [number, number]
+function linearRegressionWrong(xyr: [number, number, number][]): [number, number]
+function linearRegressionWrong(arg: [number, number, number?][]): [number, number] {
+  const xyr = arg.map(([x, y, r]) => [x, y, r === undefined ? 1 : r])
   let i,
       x, y, r,
       sumx=0, sumy=0, sumx2=0, sumy2=0, sumxy=0, sumr=0,
@@ -112,30 +112,30 @@ function linear_regression_wrong(x_y_r: [number, number, number?][]): [number, n
 
   return [a, b]
 }
-export { linear_regression_wrong as linear_regression }
+export { linearRegressionWrong as linearRegression }
 
 
 // differentiate -------------------------------------------------------------------------
 // Calculating differences for sparce values
-export function differentiate(sparce_values: (number | undefined)[]): (number | undefined)[] {
-  const diffs = fill<number | undefined>(sparce_values.length, undefined)
+export function differentiate(sparceValues: (number | undefined)[]): (number | undefined)[] {
+  const diffs = fill<number | undefined>(sparceValues.length, undefined)
 
   // Converting sparce values to list of defined values and its indices
-  const values = filter_map(sparce_values, (v, i) => v !== undefined ? [i, v] : false)
+  const values = filterMap(sparceValues, (v, i) => v !== undefined ? [i, v] : false)
 
-  let index_consistency_check = values[0][0]
+  let indexConsistencyCheck = values[0][0]
   for (let j = 0; j < values.length - 1; j++) {
     const [i1, v1] = values[j], [i2, v2] = values[j + 1]
 
     // Calculating the diff for the whole `i1-i2` span and diff for every i
-    const span_diff = v2 / v1
-    if (span_diff <= 0) throw new Error(`differentiate expect positive values`)
-    const diff_i    = Math.pow(span_diff, 1/(i2 - i1))
+    const spanDiff = v2 / v1
+    if (spanDiff <= 0) throw new Error(`differentiate expect positive values`)
+    const diffI    = Math.pow(spanDiff, 1/(i2 - i1))
 
     for (let i = i1; i < i2; i++) {
-      assert.equal(index_consistency_check, i)
-      diffs[i + 1] = diff_i
-      index_consistency_check += 1
+      assert.equal(indexConsistencyCheck, i)
+      diffs[i + 1] = diffI
+      indexConsistencyCheck += 1
     }
   }
 
@@ -170,10 +170,10 @@ test(() => {
   ])
 
   // Should check for negative values
-  let error_message = undefined
+  let errorMessage = undefined
   try { differentiate([u,  1, u, -1]) }
-  catch (e) { error_message = e.message }
-  assert.equal(error_message, `differentiate expect positive values`)
+  catch (e) { errorMessage = e.message }
+  assert.equal(errorMessage, `differentiate expect positive values`)
 })
 
 
@@ -182,15 +182,15 @@ test(() => {
 export function integrate(diffs: (number | undefined)[], base = 1): (number | undefined)[] {
   assert(diffs[0] === undefined, `first element of diff serie should always be undefined`)
   const values = fill<number | undefined>(diffs.length, undefined)
-  const first_defined_i = find_index(diffs, (v) => v !== undefined)
-  if (!first_defined_i) throw new Error(`the whole diffs serie is undefined`)
-  values[first_defined_i - 1] = base
-  for (let i = first_defined_i; i < diffs.length - 1; i++) {
+  const firstDefinedI = findIndex(diffs, (v) => v !== undefined)
+  if (!firstDefinedI) throw new Error(`the whole diffs serie is undefined`)
+  values[firstDefinedI - 1] = base
+  for (let i = firstDefinedI; i < diffs.length - 1; i++) {
     const di = diffs[i]
     if (di === undefined) break
-    const previous_v = values[i-1]
-    if (previous_v === undefined) throw new Error('internal error, there could be no undefined spans in values')
-    values[i] = previous_v * di
+    const previousV = values[i-1]
+    if (previousV === undefined) throw new Error('internal error, there could be no undefined spans in values')
+    values[i] = previousV * di
   }
   return values
 }

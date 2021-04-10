@@ -8,13 +8,13 @@ export class Hash<V, K extends SimpleTypes = string> {
   constructor()
   constructor(map: { [key in K]: V })
   constructor(list: [K, V][])
-  constructor(list: V[], to_k: (v: V) => K)
-  constructor(collection?: { [key in K]: V } | [K, V][] | V[], to_key?: (v: V) => K) {
+  constructor(list: V[], toK: (v: V) => K)
+  constructor(collection?: { [key in K]: V } | [K, V][] | V[], toKey?: (v: V) => K) {
     if (collection) {
       if (Array.isArray(collection)) {
-        if (to_key) {
+        if (toKey) {
           const list = collection as V[]
-          for (let i = 0; i < list.length; i++) this._map.set(to_key(list[i]), list[i])
+          for (let i = 0; i < list.length; i++) this._map.set(toKey(list[i]), list[i])
         } else {
           const list = collection as [K, V][]
           for (let i = 0; i < list.length; i++) this._map.set(list[i][0], list[i][1])
@@ -45,7 +45,7 @@ export class Hash<V, K extends SimpleTypes = string> {
   }
 
 
-  ensure_get(k: K): V {
+  ensureGet(k: K): V {
     const v = this._map.get(k)
     if (v === undefined) throw new Error(`map expected to have key '${k}'`)
     return v
