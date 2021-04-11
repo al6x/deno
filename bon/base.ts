@@ -2,6 +2,7 @@ export * from './map.ts'
 
 // Safe any ----------------------------------------------------------------------------------------
 export type something = any
+let deno = 'Deno' in window ? (window as something).Deno : undefined
 
 // Global variables for browser and node -----------------------------------------------------------
 // export const global: something = window
@@ -19,7 +20,7 @@ export function getEnvironment(): Environment {
     if (isBrowser()) {
       cachedEnvironment = "development" as Environment
     } else {
-      const environment = window.Deno.env.get('environment') || 'development'
+      const environment = deno.env.get('environment') || 'development'
       if (!['development', 'production', 'test'].includes(environment))
         throw new Error(`invalid environment '${environment}'`)
       cachedEnvironment = environment as Environment
@@ -29,13 +30,13 @@ export function getEnvironment(): Environment {
 }
 
 // isBrowser --------------------------------------------------------------------------------------
-export function isBrowser() { return !("Deno" in window) }
+export function isBrowser() { return deno == undefined }
 
 // p -----------------------------------------------------------------------------------------------
 function mapToJsonIfDefined(v: something) { return v && v.toJSON ? v.toJSON() : v }
 export function prettyPrint(v: something, colors = false) {
   v = deepMap(v, mapToJsonIfDefined)
-  return typeof v == 'object' ? Deno.inspect(v, { colors }) : v
+  return deno && typeof v == 'object' ? deno.inspect(v, { colors }) : v
 }
 export function p(...args: something): void {
   if (isBrowser()) console.log(...args)
@@ -73,7 +74,7 @@ test.run = async () => {
       await test()
     } catch(e) {
       log('error', `test failed ${name ? ` '${name}'` : ''}`, e)
-      if (isBrowser()) window.Deno.exit()
+      if (deno) deno.exit()
     }
   }
   log('info', 'tests passed')
@@ -247,7 +248,7 @@ test(() => {
 let cachedIsDebugEnabled: boolean | undefined = undefined
 export function isDebugEnabled(): boolean {
   if (cachedIsDebugEnabled == undefined)
-    cachedIsDebugEnabled = window.Deno.env.get('debug')?.toLowerCase() == "true"
+    cachedIsDebugEnabled = deno?.env.get('debug')?.toLowerCase() == "true"
   return cachedIsDebugEnabled
 }
 
@@ -261,7 +262,7 @@ export function getFormattedTime(time: number, withSeconds = true) {
   + `${pad0(date.getHours())}:${pad0(date.getMinutes())}${withSeconds ? ':' + pad0(date.getSeconds()) : ''}`
 }
 
-export let inspect: (o: something) => string = (o) => Deno.inspect(o, { depth: 10 }).replace(/^'|'$/g, '')
+export let inspect: (o: something) => string = (o) => deno.inspect(o, { depth: 10 }).replace(/^'|'$/g, '')
 
 const levelReplacements: { [key: string]: string } =
   { debug: 'debug', info: '     ', warn: 'warn ', error: 'error' }
@@ -798,7 +799,7 @@ test(() => {
 // ensure --------------------------------------------------------------------------------
 export function ensure<V>(value: (V | undefined) | Found<V>, info?: string): V {
   if ((typeof value == 'object') && ('found' in value)) {
-    if (!value.found) throw new Error(value.message || `value${info ? ' ' + info : ''} not found`)
+    if (!value.found) throw new Error((value as something).message || `value${info ? ' ' + info : ''} not found`)
     else              return value.value
   } else if ((typeof value == 'string')) {
     if (value == "") throw new Error(`string value${info ? ' ' + info : ''} not found`)
