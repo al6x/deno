@@ -44,8 +44,17 @@ export class Db {
     return this.pool
   }
 
-  async exec<T = unknown[]>(sql: string, params: something[] = []): Promise<T[]> {
-    this.log.with({ sql: sql }).info("exec")
+  async exec<T = unknown[]>(sql: string, params: something[], log: (log: Log) => void): Promise<T[]>
+  async exec<T = unknown[]>(sql: string, log: (log: Log) => void): Promise<T[]>
+  async exec<T = unknown[]>(
+    sql: string,
+    paramsOrLog: (something[] | ((log: Log) => void)) = [],
+    log3: ((log: Log) => void) = (log) => log.info("exec")
+  ): Promise<T[]> {
+    let params: something[] = paramsOrLog instanceof Function ? [] : paramsOrLog
+    let log: ((log: Log) => void) = paramsOrLog instanceof Function ? paramsOrLog : log3
+
+    log(this.log)
     let conn: PoolClient | undefined = undefined
     let pool = this.getPool()
     try {

@@ -56,7 +56,12 @@ export class Files {
       set
         hash = excluded.hash, size_b = excluded.size_b
       `,
-      [user_id, project_id, path, hash, data.length]
+      [user_id, project_id, path, hash, data.length],
+      (log) => {
+        log
+          .with({ user_id, project_id, path, hash })
+          .info("save {user_id}.{project_id} {path}")
+      }
     )
   }
 
@@ -67,7 +72,12 @@ export class Files {
 
     await this.db.exec(
       `delete from files where user_id = $1 and project_id = $2 and path = $3`,
-      [user_id, project_id, path]
+      [user_id, project_id, path],
+      (log) => {
+        log
+          .with({ user_id, project_id, path })
+          .info("delete {user_id}.{project_id} {path}")
+      }
     )
     let fpath = this.filePath(user_id, project_id, path)
     await fs.remove(fpath, { deleteEmptyParents: true })
@@ -81,7 +91,12 @@ export class Files {
       select user_id, project_id, path, hash, size_b
       from   files
       where  user_id = $1 and project_id = $2`,
-      [user_id, project_id]
+      [user_id, project_id],
+      (log) => {
+        log
+          .with({ user_id, project_id })
+          .info("get files {user_id}.{project_id}")
+      }
     )
     return rows
       .map(([user_id, project_id, path, hash, size_b]) => ({user_id, project_id, path, hash, size_b}))
@@ -107,7 +122,7 @@ interface File {
   size_b:     number
 }
 
-let db_schema = `
+let create_files_schema = `
   create table if not exists files(
     user_id     varchar(100) not null,
     project_id  varchar(100) not null,
@@ -136,7 +151,7 @@ function sha256(data: Uint8Array | string): string {
 // --allow-write="./tmp" ws/files.ts
 if (import.meta.main) {
   const db = new Db("nim_test")
-  await db.exec(db_schema)
+  await db.exec(create_files_schema, (log) => log.info("creating files schema"))
 
   const files = new Files("./tmp/files_test", db)
 
