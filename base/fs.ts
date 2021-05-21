@@ -3,25 +3,26 @@ import * as denoPath from 'https://deno.land/std/path/mod.ts'
 import * as denoFs from 'https://deno.land/std/fs/mod.ts'
 
 export type EntryType = 'directory' | 'file' // | 'link'
-export type Entry = { type: EntryType, name: string, path: string }
+export type Entry = { type: EntryType, name: string }
 
 
 // resolve -----------------------------------------------------------------------------------------
-export function resolve(...paths: string[]): string { return denoPath.resolve(...paths) }
+// export function resolve(...paths: string[]): string { return denoPath.resolve(...paths) }
 
 
 // readDirectory ----------------------------------------------------------------------------------
-export async function readDirectory(path: string, filter?: (entry: Entry) => boolean): Promise<Entry[]> {
-  const entries: Entry[] = []
-  for await (let entry of denoFs.walk(path, { maxDepth: 1 })) {
-    let type: EntryType
-    if (entry.isFile)           type = 'file'
-    else if (entry.isDirectory) type = 'directory'
-    else                        throw new Error("symlink type is not supported")
-    entries.push({ type, name: entry.name, path: denoPath.resolve(path, entry.name) })
-  }
-  return filter ? entries.filter(filter) : entries
-}
+// Use `Deno.readDir` as `denoFs.walk` is slow
+// export async function readDirectory(path: string, filter?: (entry: Entry) => boolean): Promise<Entry[]> {
+//   const entries: Entry[] = []
+//   for await (let entry of denoFs.walk(path, { maxDepth: 1 })) {
+//     let type: EntryType
+//     if (entry.isFile)           type = 'file'
+//     else if (entry.isDirectory) type = 'directory'
+//     else                        throw new Error("symlink type is not supported")
+//     entries.push({ type, name: entry.name }) // , path: denoPath.resolve(path, entry.name)
+//   }
+//   return filter ? entries.filter(filter) : entries
+// }
 
 
 // readFile ---------------------------------------------------------------------------------------
@@ -159,20 +160,40 @@ export async function createDirectory(path: string): Promise<void> { await denoF
 export async function exists(path: string): Promise<boolean> { return denoFs.exists(path) }
 
 
-// existsSync -------------------------------------------------------------------------------------
+// existsSync --------------------------------------------------------------------------------------
 export function existsSync(path: string): boolean { return denoFs.existsSync(path) }
 
 
+// isEmpty -----------------------------------------------------------------------------------------
+export async function isEmpty(path: string): Promise<boolean> {
+  for await (let _entry of Deno.readDir(path)) {
+    return false
+  }
+  return true
+}
+
 // remove ------------------------------------------------------------------------------------------
 // Deletes file or directory, does nothing if path not exist
-export async function remove(path: string, options?: { recursive?: boolean }): Promise<void> {
+export async function remove(
+  path: string,
+  options?: { recursive?: boolean, deleteEmptyParents?: boolean }
+): Promise<void> {
   options = options || {}
   const recursive = 'recursive' in options ? options.recursive : false
+  let success = false
   try {
     await Deno.remove(path, { recursive })
+    success = true
   } catch (e) {
     // Ignoring exception if path doesn't exist
     if (await exists(path)) throw e
+  }
+
+  if (success && options.deleteEmptyParents) {
+    const dirname = denoPath.dirname(path)
+    if (await isEmpty(dirname)) {
+      await remove(dirname, { deleteEmptyParents: true })
+    }
   }
 }
 
