@@ -1,4 +1,4 @@
-import { assert, Errorneous, something, p, ensureError, toJson } from './base.ts'
+import { assert, ErrorneousU, something, p, ensureError, toJson } from './base.ts'
 
 const jsonOutputToken = "shell_call_jsonOutput:"
 export async function onShellCall<BeforeOutput>({ before, process, after } : {
@@ -10,34 +10,34 @@ export async function onShellCall<BeforeOutput>({ before, process, after } : {
   let data = JSON.parse(Deno.args[0])
 
   // Calling before
-  let beforeOutput: Errorneous<BeforeOutput>
+  let beforeOutput: ErrorneousU<BeforeOutput>
   try {
-    beforeOutput = { isError: false, value: await before(data.before) }
+    beforeOutput = { is_error: false, value: await before(data.before) }
   } catch (e) {
-    beforeOutput = { isError: true, error: ensureError(e).message }
+    beforeOutput = { is_error: true, error: ensureError(e).message }
   }
 
   // Processing
   assert(Array.isArray(data.inputs), "inputs should be an array")
-  let results: Errorneous<something>[] = []
-  if (beforeOutput.isError) {
+  let results: ErrorneousU<something>[] = []
+  if (beforeOutput.is_error) {
     results = data.inputs.map(() => beforeOutput)
   } else {
     for (let input of data.inputs) {
       try {
         let value = await process(beforeOutput.value, input)
-        results.push({ isError: false, value })
+        results.push({ is_error: false, value })
       } catch (e) {
-        results.push({ isError: true, error: ensureError(e).message })
+        results.push({ is_error: true, error: ensureError(e).message })
       }
     }
   }
 
   // After
   try {
-    await after(beforeOutput.isError ? undefined : beforeOutput.value, data.after) }
+    await after(beforeOutput.is_error ? undefined : beforeOutput.value, data.after) }
   catch (e) {
-    results = data.inputs.map(() => ({ isError: true, error: ensureError(e).message }))
+    results = data.inputs.map(() => ({ is_error: true, error: ensureError(e).message }))
   }
 
   // Writing result to STDOUT

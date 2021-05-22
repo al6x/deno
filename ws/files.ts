@@ -1,9 +1,8 @@
 import { p, last, assert } from "base/base.ts"
 import { Log } from "base/log.ts"
+import * as crypto from "base/crypto.ts"
 import * as fs from "base/fs.ts"
 import { Db } from "./db.ts"
-import { encodeBase58, decodeBase58 } from "base/base58.js"
-import { createHash } from "https://deno.land/std/hash/mod.ts"
 
 
 // Files -------------------------------------------------------------------------------------------
@@ -41,7 +40,7 @@ export class Files {
     this.log
       .with({ user_id, project_id, path, hash })
       .info("save_file {user_id}.{project_id} {path}")
-    let vhash = sha256(data)
+    let vhash = crypto.hash(data, 'sha256')
     if (hash != vhash) throw new Error(`hash is wrong, should be base58 hash '${vhash}'`)
 
     let fpath = this.filePath(user_id, project_id, path)
@@ -139,13 +138,6 @@ let create_files_schema = `
 `
 
 
-function sha256(data: Uint8Array | string): string {
-  const hash = createHash("sha256")
-  hash.update(data)
-  return encodeBase58(hash.digest())
-}
-
-
 // Test --------------------------------------------------------------------------------------------
 // deno run --import-map=import_map.json --unstable --allow-net --allow-read="./tmp" \
 // --allow-write="./tmp" ws/files.ts
@@ -157,8 +149,8 @@ if (import.meta.main) {
 
   function tou8a(s: string) { return new TextEncoder().encode(s) }
 
-  await files.setFile("alex", "plot", "/index.html", sha256("some html"), tou8a("some html"))
-  await files.setFile("alex", "plot", "/scripts/script.js", sha256("some js"), tou8a("some js"))
+  await files.setFile("alex", "plot", "/index.html", crypto.hash("some html", 'sha256'), tou8a("some html"))
+  await files.setFile("alex", "plot", "/scripts/script.js", crypto.hash("some js", 'sha256'), tou8a("some js"))
 
   assert.equal(await files.getFile("alex", "plot", "/index.html"), tou8a("some html"))
   assert.equal(await files.getFile("alex", "plot", "/scripts/script.js"), tou8a("some js"))

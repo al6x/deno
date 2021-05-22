@@ -1,0 +1,14 @@
+<!-- serve -p 5001 -->
+<html>
+  <head>
+    <!-- <script src="res.js"></script> -->
+    <script src="/pubsub_client.js"></script>
+  </head>
+  <body>
+    <script>
+
+new PubSubClient("http://localhost:5000/pubsub", ["time"], (message) => console.log(message))
+
+    </script>
+  </body>
+</html>

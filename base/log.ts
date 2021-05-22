@@ -1,5 +1,6 @@
 import { p, take, something } from "./base.ts"
-import { grey, yellow, red } from "./terminal.ts"
+import { red, yellow, gray as grey } from "https://deno.land/std/fmt/colors.ts"
+// import { grey, yellow, red } from "./terminal.ts"
 
 
 // LogConfig ---------------------------------------------------------------------------------------

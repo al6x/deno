@@ -127,7 +127,7 @@ export async function httpCall<In, Out>(
       if (!response.ok)
         throw new Error(`can't ${method} ${url} ${response.status} ${response.statusText}`)
       let data = await response.json()
-      if (data.isError) throw new Error(data.message || "Unknown error")
+      if (data.is_error) throw new Error(data.message || "Unknown error")
       return data
     } catch (e) {
       throw e
@@ -899,4 +899,5 @@ export function ensureError(error: something, defaultMessage = "Unknown error"):
 
 
 // Errorneous ----------------------------------------------------------------------------
-export type Errorneous<R> = { isError: true, error: string } | { isError: false, value: R }
+export type Errorneous<R> = { isError: true, message: string } | { isError: false, value: R }
+export type ErrorneousU<R> = { is_error: true, message: string } | { is_error: false, value: R }
