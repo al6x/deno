@@ -67,7 +67,7 @@ export class Log {
   error(message: string): void {
     if (!isEnabled(this.component, "warn")) return
     const formatted = this.formatComponent() + this.formatId() + this.formatMessage(message) + this.formatData()
-    console.error(red("E " + message))
+    console.error(red("E " + formatted))
   }
 
   private formatComponent(): string {
@@ -95,12 +95,12 @@ export class Log {
     return message.replace(keyre, (_match, skey) => {
       let value: string
       if (this.data == undefined) {
-        value = skey.replace("\n", " ")
+        value = skey
       } else {
         const key = skey.substring(1, skey.length - 1)
         value = (this.data as something)[key] || key
       }
-      return value.replace("\n", " ")
+      return value.replace(/\n/g, " ")
     })
   }
 }

@@ -1,3 +1,5 @@
+import { Log } from "./log.ts"
+
 export * from './map.ts'
 
 // Safe any ----------------------------------------------------------------------------------------
@@ -48,37 +50,74 @@ export function p(...args: something): void {
 }
 
 // Test ---------------------------------------------------------------------
-export interface TestApi {
-  (fn: () => void): void
-  (name: string, fn: (() => void)): void
-  focus: {
-    (fn: () => void): void
-    (name: string, fn: (() => void)): void
-  }
-  run(): void
-}
-const focusedTests: [string | undefined, () => void][] = []
-const tests: [string | undefined, () => void][] = []
-export const test = <TestApi>function(...args: something[]) {
-  const [name, fn] = args.length == 1 ? [undefined, args[0]] : args
-  tests.push([name, fn])
-}
-test.focus = function(...args: something[]) {
-  const [name, fn] = args.length == 1 ? [undefined, args[0]] : args
-  focusedTests.push([name, fn])
-}
-test.run = async () => {
-  const list = focusedTests.length > 0 ? focusedTests : tests
-  for(const [name, test] of list) {
-    try {
-      await test()
-    } catch(e) {
-      console.error(`test failed ${name ? ` '${name}'` : ''}`, e)
-      if (deno) deno.exit()
+const tests: [string, (() => void) | (() => Promise<void>)][] = []
+let lastRunnedTest = 0, testingInProgress = false
+function runTests () {
+  if (testingInProgress) return
+  testingInProgress = true
+  let log = new Log("Test")
+  log.info("checking")
+  setTimeout(async () => {
+    while (lastRunnedTest < tests.length) {
+      let [name, test] = tests[lastRunnedTest]
+      lastRunnedTest += 1
+      try {
+        let promise = test()
+        if (promise) await promise
+      } catch (e) {
+        log.with(e).with({ name }).error(`test '{name}' failed`)
+        throw e
+      }
     }
-  }
-  // log('info', 'tests passed')
+    log.info("success")
+    testingInProgress = false
+  }, 0)
 }
+
+let testEnabledS: string
+try   { testEnabledS = (Deno.env.get("test") || "").toLowerCase() }
+catch { testEnabledS = "false" }
+let testEnabled = testEnabledS == "true"
+
+export function test(name: string, body: (() => void) | (() => Promise<void>)) {
+  if (testEnabled || testEnabledS == name.toLowerCase()) {
+    tests.push([name, body])
+    runTests()
+  }
+}
+
+
+// export interface TestApi {
+//   (fn: () => void): void
+//   (name: string, fn: (() => void)): void
+//   focus: {
+//     (fn: () => void): void
+//     (name: string, fn: (() => void)): void
+//   }
+//   run(): void
+// }
+// const focusedTests: [string | undefined, () => void][] = []
+// const tests: [string | undefined, () => void][] = []
+// export const test = <TestApi>function(...args: something[]) {
+//   const [name, fn] = args.length == 1 ? [undefined, args[0]] : args
+//   tests.push([name, fn])
+// }
+// test.focus = function(...args: something[]) {
+//   const [name, fn] = args.length == 1 ? [undefined, args[0]] : args
+//   focusedTests.push([name, fn])
+// }
+// test.run = async () => {
+//   const list = focusedTests.length > 0 ? focusedTests : tests
+//   for(const [name, test] of list) {
+//     try {
+//       await test()
+//     } catch(e) {
+//       console.error(`test failed ${name ? ` '${name}'` : ''}`, e)
+//       if (deno) deno.exit()
+//     }
+//   }
+//   // log('info', 'tests passed')
+// }
 
 
 // documentation -------------------------------------------------------------------------
@@ -231,7 +270,7 @@ export function deepMap(obj: something, map: (o: something) => something): somet
         .map(([k, v]) => ({ [k]: deepMap(v, map) })
     ))
 }
-test(() => {
+test("deepMap", () => {
   class Wrapper<T> {
     constructor(readonly v: T) {}
     toJSON() { return this.v }
@@ -695,7 +734,7 @@ function pick(o: something, keys: (string | number)[]) {
   return partition(o, (_v, i: something) => keys.includes(i))[0]
 }
 export { pick }
-test(() => {
+test("pick", () => {
   assert.equal(pick({ a: 1, b: 2 }, ['a']), { a: 1 })
 })
 
@@ -831,7 +870,7 @@ export function round(v: number, digits: number = 0): number {
     Math.round(v) :
     Math.round((v + Number.EPSILON) * Math.pow(10, digits)) / Math.pow(10, digits)
 }
-test(() => {
+test("round", () => {
   assert.equal(round(0.05860103881518906, 2), 0.06)
 })
 
