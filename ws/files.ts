@@ -50,9 +50,7 @@ export class Files {
     const fpath = this.filePath(user_id, project_id, path)
     await fs.writeFile(fpath, data)
 
-    const file: File = {
-      user_id, project_id, path, hash, size_b: data.length
-    }
+    const file: File = { user_id, project_id, path, hash, size_b: data.length }
     await this.db_files.save(file)
   }
 

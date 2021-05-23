@@ -161,7 +161,7 @@ export class DbTable<T extends object> {
 }
 
 // Test --------------------------------------------------------------------------------------------
-// deno run --import-map=import_map.json --unstable --allow-net --allow-run db/db_this.ts
+// deno run --import-map=import_map.json --unstable --allow-all db/db_table.ts
 if (import.meta.main) {
   // Configuration could be done in separate runtime config
   Db.instantiate(new Db("test", "db_unit_test"))
@@ -211,10 +211,10 @@ if (import.meta.main) {
   assert.equal(await users.get(1),                jim)
 
   // count, has
-  assert(await users.count({ age: 31 }) == 1)
+  assert.equal(await users.count({ age: 31 }), 1)
   assert.equal(await users.has({ age: 31 }), true)
 
   // del
   await users.del(jim)
-  assert(await users.count() == 0)
+  assert.equal(await users.count(), 0)
 }

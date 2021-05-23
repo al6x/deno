@@ -1,4 +1,20 @@
-// import { assert, p, test } from "base/base.ts"
+import { assert, p, test, something } from "base/base.ts"
+
+// Converting BitInt to Number
+export function postProcessRow<T extends object>(row: T): T {
+  const o: something = {}
+  for (const k in row) {
+    const v = row[k]
+    if (typeof v == "bigint") {
+      const n = Number(v)
+      if ((n as something) != (v as something)) throw new Error(`can't convert BigInt to Number, ${v}`)
+      o[k] = n
+    } else {
+      o[k] = v
+    }
+  }
+  return o
+}
 
 // PgUrl ------------------------------------------------------------------------------------------
 export interface PgUrl {
@@ -22,3 +38,4 @@ export function parsePgUrl(name_or_url: string): PgUrl {
     password: parsed.username
   }
 }
+

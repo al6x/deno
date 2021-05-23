@@ -1,6 +1,6 @@
 import { p, something, assert, keys } from "base/base.ts"
 import { Log } from "base/log.ts"
-import { PgUrl, parsePgUrl } from "./utils.ts"
+import { PgUrl, parsePgUrl, postProcessRow } from "./utils.ts"
 import { sql, SQL, sqlToString } from "./sql.ts"
 import * as bash from "base/bash.ts"
 import { Pool, PoolClient } from "postgres/mod.ts"
@@ -155,9 +155,10 @@ export class Db {
   }
 
   async exec(sql: SQL, log?: (log: Log) => void): Promise<void> {
-    await this.withConnection((conn) => {
+    await this.withConnection(async (conn) => {
       (log || this.defaultLog(sql, "exec"))(this.log)
-      return conn.queryObject(sql.sql, ...sql.values)
+      await conn.queryObject(sql.sql, ...sql.values)
+      return "nothing"
     })
   }
 
@@ -166,7 +167,7 @@ export class Db {
       (log || this.defaultLog(sql, "get"))(this.log)
       return conn.queryObject(sql.sql, ...sql.values)
     })
-    return rows as T[]
+    return rows.map(postProcessRow) as T[]
   }
 
   async fget<T>(sql: SQL, log?: (log: Log) => void): Promise<T | undefined> {
@@ -209,7 +210,7 @@ export class Db {
 
 
 // Test --------------------------------------------------------------------------------------------
-// deno run --import-map=import_map.json --unstable --allow-net --allow-run db/db.ts
+// deno run --import-map=import_map.json --unstable --allow-all db/db.ts
 if (import.meta.main) {
   // Configuration should be done in separate runtime config
   Db.instantiate(new Db("default", "db_unit_test"))
@@ -235,7 +236,7 @@ if (import.meta.main) {
   )
 
   // Count
-  assert(
-    await db.getValue<number>(sql`select count(*) from users where age = ${30}`) == 1
+  assert.equal(
+    await db.getValue<number>(sql`select count(*) from users where age = ${30}`), 1
   )
 }
