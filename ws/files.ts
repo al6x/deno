@@ -2,20 +2,24 @@ import { p, last, assert } from "base/base.ts"
 import { Log } from "base/log.ts"
 import * as crypto from "base/crypto.ts"
 import * as fs from "base/fs.ts"
-import { Db } from "db/db.ts"
+import { Db, DbTable, sql } from "db/db_table.ts"
 
 
 // Files -------------------------------------------------------------------------------------------
 export class Files {
-  private readonly log: Log
+  private readonly log:      Log
+  private readonly db_files: DbTable<File>
 
   constructor(
     public readonly path:           string,
-    public readonly db:             Db,
+    // public readonly db:             Db,
+                    db:             Db,
     public readonly max_object_b:   number = 2_000_000,
     public readonly max_per_user_b: number = 10_000_000
   ) {
     this.log = new Log("Files", last(path.split("/")))
+    db.before(sql(create_files_schema))
+    this.db_files = db.table("files", ["user_id", "project_id", "path"], false)
   }
 
   filePath(user_id: string, project_id: string, path: string): string {
@@ -40,28 +44,16 @@ export class Files {
     this.log
       .with({ user_id, project_id, path, hash })
       .info("save_file {user_id}.{project_id} {path}")
-    let vhash = crypto.hash(data, 'sha256')
+    const vhash = crypto.hash(data, 'sha256')
     if (hash != vhash) throw new Error(`hash is wrong, should be base58 hash '${vhash}'`)
 
-    let fpath = this.filePath(user_id, project_id, path)
+    const fpath = this.filePath(user_id, project_id, path)
     await fs.writeFile(fpath, data)
 
-    await this.db.exec(`
-      insert into files
-        (user_id, project_id, path, hash, size_b)
-      values
-        ($1,      $2,         $3,   $4,   $5)
-      on conflict (user_id, project_id, path) do update
-      set
-        hash = excluded.hash, size_b = excluded.size_b
-      `,
-      [user_id, project_id, path, hash, data.length],
-      (log) => {
-        log
-          .with({ user_id, project_id, path, hash })
-          .info("save {user_id}.{project_id} {path}")
-      }
-    )
+    const file: File = {
+      user_id, project_id, path, hash, size_b: data.length
+    }
+    await this.db_files.save(file)
   }
 
   async delFile(user_id: string, project_id: string, path: string) {
@@ -69,36 +61,17 @@ export class Files {
       .with({ user_id, project_id, path })
       .info("del_file {user_id}.{project_id} {path}")
 
-    await this.db.exec(
-      `delete from files where user_id = $1 and project_id = $2 and path = $3`,
-      [user_id, project_id, path],
-      (log) => {
-        log
-          .with({ user_id, project_id, path })
-          .info("delete {user_id}.{project_id} {path}")
-      }
-    )
-    let fpath = this.filePath(user_id, project_id, path)
+    this.db_files.del({ user_id, project_id, path })
+
+    const fpath = this.filePath(user_id, project_id, path)
     await fs.remove(fpath, { deleteEmptyParents: true })
   }
 
-  async getFiles(user_id: string, project_id: string): Promise<File[]> {
+  getFiles(user_id: string, project_id: string): Promise<File[]> {
     this.log
       .with({ user_id, project_id })
       .info("get_files {user_id}.{project_id}")
-    let rows = await this.db.exec<[string, string, string, string, number]>(`
-      select user_id, project_id, path, hash, size_b
-      from   files
-      where  user_id = $1 and project_id = $2`,
-      [user_id, project_id],
-      (log) => {
-        log
-          .with({ user_id, project_id })
-          .info("get files {user_id}.{project_id}")
-      }
-    )
-    return rows
-      .map(([user_id, project_id, path, hash, size_b]) => ({user_id, project_id, path, hash, size_b}))
+    return this.db_files.filter({ user_id, project_id })
   }
 }
 
@@ -121,7 +94,7 @@ interface File {
   size_b:     number
 }
 
-let create_files_schema = `
+const create_files_schema = `
   create table if not exists files(
     user_id     varchar(100) not null,
     project_id  varchar(100) not null,
@@ -140,10 +113,11 @@ let create_files_schema = `
 
 // Test --------------------------------------------------------------------------------------------
 // deno run --import-map=import_map.json --unstable --allow-net --allow-read="./tmp" \
-// --allow-write="./tmp" ws/files.ts
+// --allow-write="./tmp" --allow-run ws/files.ts
 if (import.meta.main) {
-  const db = new Db("nim_test")
-  await db.exec(create_files_schema, (log) => log.info("creating files schema"))
+  Db.instantiate(new Db("default", "deno_unit_tests"))
+  const db = Db.instance()
+  // await db.exec(create_files_schema, (log) => log.info("creating files schema"))
 
   const files = new Files("./tmp/files_test", db)
 

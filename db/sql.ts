@@ -13,6 +13,7 @@ function isSql(o: something): o is SQL {
 
 // sql ---------------------------------------------------------------------------------------------
 function sql(literals: TemplateStringsArray, ...values: SQLValue[]): SQL
+function sql(sql: string): SQL
 function sql(sql: string, values: object): SQL
 function sql(sql: string, values: object, validateUnusedKeys: boolean): SQL
 function sql(...args: something[]): SQL {
@@ -76,7 +77,7 @@ test("sqlLiteral", () => {
 
 
 // sqlParams ---------------------------------------------------------------------------------------
-export function sqlParams(sql: string, values: object, validateUnusedKeys = true): SQL {
+export function sqlParams(sql: string, values = {}, validateUnusedKeys = true): SQL {
   // Replacing SQL parameters
   let sqlKeys = new Set<string>(), orderedValues: SQLValue[] = []
   let counter = 0

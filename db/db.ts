@@ -37,7 +37,7 @@ export class Db {
   }
 
   private static readonly dbs = new Map<string, Db>()
-  static instance(id: string): Db {
+  static instance(id = "default"): Db {
     let db = this.dbs.get(id)
     if (!db) throw new Error(`can't find db instance ${id}`)
     return db
@@ -212,11 +212,10 @@ export class Db {
 // deno run --import-map=import_map.json --unstable --allow-net --allow-run db/db.ts
 if (import.meta.main) {
   // Configuration should be done in separate runtime config
-  Db.instantiate(new Db("test", "db_unit_test"))
+  Db.instantiate(new Db("default", "db_unit_test"))
 
-  // No need to manage connections, it will be connected lazily and
-  // reconnected in case of connection error
-  const db = Db.instance("test")
+  // Will be connected lazily and reconnected in case of connection error
+  const db = Db.instance()
 
   // Executing schema befor any other DB query, will be executed lazily before the first use
   db.before(sql`

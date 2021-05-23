@@ -3,6 +3,9 @@ import { Log } from "base/log.ts"
 import { sql, SQL, sqlToString, buildWhere } from "./sql.ts"
 import { Db } from "./db.ts"
 
+export type { SQL }
+export { Db, sql }
+
 export class DbTable<T extends object> {
   private readonly log:   Log
 
@@ -12,7 +15,7 @@ export class DbTable<T extends object> {
     public readonly ids:  string[],
     public readonly auto_id: boolean
   ) {
-    this.log = new Log("DbTable", `${db.id}.${this.name}`)
+    this.log = new Log("Db", `${db.id}.${this.name}`)
   }
 
   // Could be overrided
@@ -97,7 +100,7 @@ export class DbTable<T extends object> {
 
   async filter<W>(where?: W, limit = 0, log?: (log: Log) => void): Promise<T[]> {
     const whereSql = buildWhere(where || sql``, this.ids)
-    let defaultLog = (log: Log) => log.with({ where: sqlToString(whereSql) }).info("filter {where}")
+    let defaultLog = (log: Log) => log.with({ where: sqlToString(whereSql) }).info("filter '{where}'")
     ;(log || defaultLog)(this.log)
 
     const whereStatement = whereSql.sql == "" ? "" : " where "
@@ -109,7 +112,7 @@ export class DbTable<T extends object> {
 
   async fget<W>(where?: W, log?: (log: Log) => void): Promise<T | undefined> {
     const whereSql = buildWhere(where || sql``, this.ids)
-    let defaultLog = (log: Log) => log.with({ where: sqlToString(whereSql) }).info("get_one {where}")
+    let defaultLog = (log: Log) => log.with({ where: sqlToString(whereSql) }).info("get_one '{where}'")
     ;(log || defaultLog)(this.log)
     const found = await this.filter(where, 2, () => {})
     if (found.length > 1) throw new Error(`expected one but found ${found.length} objects`)
@@ -119,7 +122,7 @@ export class DbTable<T extends object> {
 
   async del<W>(where?: W, log?: (log: Log) => void): Promise<void> {
     const whereSql = buildWhere(where || sql``, this.ids)
-    let defaultLog = (log: Log) => log.with({ where: sqlToString(whereSql) }).info("del {where}")
+    let defaultLog = (log: Log) => log.with({ where: sqlToString(whereSql) }).info("del '{where}'")
     ;(log || defaultLog)(this.log)
     const query = `delete from ${this.name} where ${whereSql.sql}`
     await this.db.exec({ sql: query, values: whereSql.values }, () => {})
@@ -134,7 +137,7 @@ export class DbTable<T extends object> {
 
   count<W>(where?: W, log?: (log: Log) => void): Promise<number> {
     const whereSql = buildWhere(where || sql``, this.ids)
-    let defaultLog = (log: Log) => log.with({ where: sqlToString(whereSql) }).info("count {where}")
+    let defaultLog = (log: Log) => log.with({ where: sqlToString(whereSql) }).info("count '{where}'")
     ;(log || defaultLog)(this.log)
 
     const whereStatement = whereSql.sql == "" ? "" : " where "
@@ -145,7 +148,7 @@ export class DbTable<T extends object> {
 
   async has<W>(where?: W, log?: (log: Log) => void): Promise<boolean> {
     const whereSql = buildWhere(where || sql``, this.ids)
-    let defaultLog = (log: Log) => log.with({ where: sqlToString(whereSql) }).info("contains {where}")
+    let defaultLog = (log: Log) => log.with({ where: sqlToString(whereSql) }).info("contains '{where}'")
     ;(log || defaultLog)(this.log)
 
     return await this.count(where, () => {}) > 0
@@ -160,11 +163,10 @@ export class DbTable<T extends object> {
 // Test --------------------------------------------------------------------------------------------
 // deno run --import-map=import_map.json --unstable --allow-net --allow-run db/db_this.ts
 if (import.meta.main) {
-  // Configuration should be done in separate runtime config
+  // Configuration could be done in separate runtime config
   Db.instantiate(new Db("test", "db_unit_test"))
 
-  // No need to manage connections, it will be connected lazily and
-  // reconnected in case of connection error
+  // Will connect lazily and reconnected in case of connection error
   const db = Db.instance("test")
 
   // Executing schema befor any other DB query, will be executed lazily before the first use
