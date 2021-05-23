@@ -198,9 +198,6 @@ if (import.meta.main) {
   // await db.drop
   // await db.create()
 
-  // Try URL string
-
-
   // Executing schema befor any other DB query, will be executed lazily before the first use
   db.before(sql`
     drop table if exists users;
