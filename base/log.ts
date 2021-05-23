@@ -6,20 +6,22 @@ import { red, yellow, gray as grey } from "https://deno.land/std/fmt/colors.ts"
 // LogConfig ---------------------------------------------------------------------------------------
 let env: {[key: string]: string | undefined} = {}
 try {
-  for (let key of ["disable_logs", "log_as_debug", "log_data"]) {
+  for (let key of ["log", "disable_logs", "log_as_debug", "log_data"]) {
     env[key] = Deno.env.get(key)
   }
 } catch(e) {
   // Ignoring if there's no `
 }
 
-const logConfig = {
+export const logConfig = {
+  log:         env["log"] != "false",
   disableLogs: new Set((env["disable_logs"] || "").split(",")),
   logAsDebug:  new Set((env["log_as_debug"] || "").split(",")),
   logData:     env["log_data"] == "true"
 }
 
 function isEnabled(component: string, level: string): boolean {
+  if (!logConfig.log) return false
   const [c, l] = [component.toLowerCase(), level.toLowerCase()]
   return !(logConfig.disableLogs.has(c) || logConfig.disableLogs.has(l) || logConfig.disableLogs.has(`{c}.{l}`))
 }

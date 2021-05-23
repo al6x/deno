@@ -56,12 +56,12 @@ function runTests () {
   if (testingInProgress) return
   testingInProgress = true
   let log = new Log("Test")
-  log.info("checking")
   setTimeout(async () => {
     while (lastRunnedTest < tests.length) {
       let { name, test } = tests[lastRunnedTest]
       lastRunnedTest += 1
       try {
+        log.with({ name: name }).info("checking '{name}'")
         let promise = test()
         if (promise) await promise
       } catch (e) {

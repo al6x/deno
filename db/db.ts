@@ -210,7 +210,7 @@ export class Db {
 
 
 // Test --------------------------------------------------------------------------------------------
-// test=slow deno run --import-map=import_map.json --unstable --allow-all db/db.ts
+// test=Db deno run --import-map=import_map.json --unstable --allow-all db/db.ts
 test("Db", async () => {
   // Configuration should be done in separate runtime config
   Db.instantiate(new Db("default", "deno_unit_tests"), true)
