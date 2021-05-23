@@ -4,6 +4,7 @@ import { PgUrl, parsePgUrl } from "./utils.ts"
 import { sql, SQL, sqlToString } from "./sql.ts"
 import * as bash from "base/bash.ts"
 import { Pool, PoolClient } from "postgres/mod.ts"
+import { DbTable } from "./db_table.ts"
 
 // Hiding notice warnings, should be removed when issue fixed
 // https://github.com/denodrivers/postgres/issues/254
@@ -44,6 +45,10 @@ export class Db {
   static instantiate(db: Db, override = false): void {
     if (this.dbs.has(db.id) && !override) throw new Error(`can't re define db instance ${db.id}`)
     this.dbs.set(db.id, db)
+  }
+
+  table<T extends object>(name: string, ids = ["id"], auto_id = false): DbTable<T> {
+    return new DbTable<T>(this, name, ids, auto_id)
   }
 
   async create() {
@@ -149,29 +154,29 @@ export class Db {
     return (log: Log) => { log.with({ sql: sqlToString(sql) }).info(`${message} '{sql}'`) }
   }
 
-  async exec<T extends Record<string, unknown>>(sql: SQL, log?: (log: Log) => void) {
+  async exec(sql: SQL, log?: (log: Log) => void): Promise<void> {
     await this.withConnection((conn) => {
       (log || this.defaultLog(sql, "exec"))(this.log)
-      return conn.queryObject<T>(sql.sql, ...sql.values)
+      return conn.queryObject(sql.sql, ...sql.values)
     })
   }
 
-  async get<T extends Record<string, unknown>>(sql: SQL, log?: (log: Log) => void): Promise<T[]> {
+  async get<T>(sql: SQL, log?: (log: Log) => void): Promise<T[]> {
     let { rows } = await this.withConnection((conn) => {
       (log || this.defaultLog(sql, "get"))(this.log)
-      return conn.queryObject<T>(sql.sql, ...sql.values)
+      return conn.queryObject(sql.sql, ...sql.values)
     })
-    return rows
+    return rows as T[]
   }
 
-  async fget<T extends Record<string, unknown>>(sql: SQL, log?: (log: Log) => void): Promise<T | undefined> {
+  async fget<T>(sql: SQL, log?: (log: Log) => void): Promise<T | undefined> {
     let rows = await this.get<T>(sql, log || this.defaultLog(sql, "fget"))
     if (rows.length > 1) throw new Error(`expected single result but got ${rows.length} rows`)
     if (rows.length < 1) return undefined
     return rows[0]
   }
 
-  async getOne<T extends Record<string, unknown>>(sql: SQL, log?: (log: Log) => void): Promise<T> {
+  async getOne<T>(sql: SQL, log?: (log: Log) => void): Promise<T> {
     let rows = await this.get<T>(sql, log || this.defaultLog(sql, "getOne"))
     if (rows.length > 1) throw new Error(`expected single row but got ${rows.length} rows`)
     if (rows.length < 1) throw new Error(`expected single row but got none`)
@@ -184,7 +189,7 @@ export class Db {
     if (rows.length < 1) throw new Error(`expected single row but got none`)
     let row = rows[0]
 
-    let allKeys = keys(row)
+    let allKeys = Object.keys(row as object)
     if (allKeys.length > 1) throw new Error(`expected single value in row but got ${allKeys.length} columns`)
     if (allKeys.length < 1) throw new Error(`expected single value in row but got nothing`)
     return (row as something)[allKeys[0]]
@@ -204,7 +209,7 @@ export class Db {
 
 
 // Test --------------------------------------------------------------------------------------------
-// deno run --import-map=import_map.json --unstable --allow-net --allow-run pg/db.ts
+// deno run --import-map=import_map.json --unstable --allow-net --allow-run db/db.ts
 if (import.meta.main) {
   // Configuration should be done in separate runtime config
   Db.instantiate(new Db("test", "db_unit_test"))

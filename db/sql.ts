@@ -1,4 +1,4 @@
-import { p, assert, test, something, trim } from "base/base.ts"
+import { p, assert, test, something, trim, sort } from "base/base.ts"
 
 export type SQLValue = object | null | string | number | boolean
 export type SQL = { sql: string, values: SQLValue[] }
@@ -7,6 +7,11 @@ export function sqlToString(sql: SQL) {
   return trim(sql.sql.replace(/[\n\s]+/g, " ")) + (sql.values.length > 0 ? ` <- ${sql.values.join(", ")}` : "")
 }
 
+function isSql(o: something): o is SQL {
+  return o != null && o != undefined && typeof o == "object" && "sql" in o && "values" in o
+}
+
+// sql ---------------------------------------------------------------------------------------------
 function sql(literals: TemplateStringsArray, ...values: SQLValue[]): SQL
 function sql(sql: string, values: object): SQL
 function sql(sql: string, values: object, validateUnusedKeys: boolean): SQL
@@ -16,6 +21,8 @@ function sql(...args: something[]): SQL {
 }
 export { sql }
 
+
+// sqlLiteral --------------------------------------------------------------------------------------
 function sqlLiteral(literals: TemplateStringsArray, ...placeholders: SQLValue[]): SQL {
   let sql: string[] = [], values: SQLValue[] = []
   let counter = 1
@@ -57,17 +64,18 @@ function sqlLiteral(literals: TemplateStringsArray, ...placeholders: SQLValue[])
 test("sqlLiteral", () => {
   assert.equal(
     sql`insert into users (name, age) values (${"Jim"}, ${33})`,
-    ["insert into users (name, age) values ($1, $2)", ["Jim", 33]]
+    { sql: "insert into users (name, age) values ($1, $2)", values: ["Jim", 33] }
   )
 
   // Should expand list
   assert.equal(
     sql`select count(*) from users where name in ${["Jim", "John", null]}`,
-    ["select count(*) from users where name in ($1, $2, $3)", ["Jim", "John", null]]
+    { sql: "select count(*) from users where name in ($1, $2, $3)", values: ["Jim", "John", null] }
   )
 })
 
 
+// sqlParams ---------------------------------------------------------------------------------------
 export function sqlParams(sql: string, values: object, validateUnusedKeys = true): SQL {
   // Replacing SQL parameters
   let sqlKeys = new Set<string>(), orderedValues: SQLValue[] = []
@@ -106,14 +114,47 @@ export function sqlParams(sql: string, values: object, validateUnusedKeys = true
 test("sqlParams", () => {
   assert.equal(
     sql("insert into users (name, age) values (:name, :age)", { name: "Jim", age: 33 }),
-    ["insert into users (name, age) values ($1, $2)", ["Jim", 33]]
+    { sql: "insert into users (name, age) values ($1, $2)", values: ["Jim", 33] }
   )
 
   // Should expand list
   assert.equal(
     sql("select count(*) from users where name in :users", { users: ["Jim", "John", null] }),
-    ["select count(*) from users where name in ($1, $2, $3)", ["Jim", "John", null]]
+    { sql: "select count(*) from users where name in ($1, $2, $3)", values: ["Jim", "John", null] }
   )
 })
 
-// test=true deno run --import-map=import_map.json --allow-env pg/sql.ts
+
+// buildWhere --------------------------------------------------------------------------------------
+export function buildWhere<W>(where: W, ids: string[]): SQL {
+  if (isSql(where)) {
+    return where
+  } else if (typeof where == "object") {
+    // Checkingif where is object of T, then using only its ids, used to delete or refresh object of T
+    let isT = ids.length > 0
+    for (const id of ids) if (!(id in where)) isT = false
+
+    let fields = isT ? Object.keys(where).filter((n) => ids.includes(n)) : Object.keys(where)
+    const conditions = sort(fields).map((name) => `${name} = :${name}`).join(" and ")
+    return sql(conditions, where as something, !isT)
+  } else if (typeof where == "number" || typeof where == "string" || typeof where == "boolean") {
+    return sql`id = ${where}`
+  } else {
+    throw `unsupported where clause {where}`
+  }
+}
+
+test("buildQuery", () => {
+  assert.equal(buildWhere(sql`id = ${1}`, []), sql`id = ${1}`)
+
+  assert.equal(buildWhere({ id: 1 }, []), sql`id = ${1}`)
+
+  assert.equal(buildWhere(1, []), sql`id = ${1}`)
+
+  assert.equal(buildWhere({ name: "Jim", id: 1 }, []),     sql`id = ${1} and name = ${"Jim"}`)
+  assert.equal(buildWhere({ name: "Jim", id: 1 }, ["id"]), sql`id = ${1}`)
+})
+
+
+// Test --------------------------------------------------------------------------------------------
+// test=true deno run --import-map=import_map.json --allow-env db/sql.ts
