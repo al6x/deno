@@ -50,7 +50,7 @@ export class DbTable<T extends object> {
         returning ${ids}
       `
 
-      const idsFromDatabase = await this.db.getOne(sql(query, o, false), () => {}) as object
+      const idsFromDatabase = await this.db.get(sql(query, o, false), () => {}) as object
       return { ...o, ...idsFromDatabase }
     }
   }
@@ -93,7 +93,7 @@ export class DbTable<T extends object> {
       returning ${ids}
     `
 
-    const idsFromDatabase = await this.db.getOne(sql(query, o, false), () => {}) as object
+    const idsFromDatabase = await this.db.get(sql(query, o, false), () => {}) as object
     return { ...o, ...idsFromDatabase }
   }
 
@@ -106,7 +106,7 @@ export class DbTable<T extends object> {
     const whereStatement = whereSql.sql == "" ? "" : " where "
     const limitStatement = limit > 0 ? ` limit ${limit}` : ""
     var query = `select * from ${this.name}${whereStatement}${whereSql.sql}${limitStatement}`
-    return await this.db.get<T>({ sql: query, values: whereSql.values }, () => {})
+    return await this.db.filter<T>({ sql: query, values: whereSql.values }, () => {})
   }
 
 
@@ -163,11 +163,8 @@ export class DbTable<T extends object> {
 // Test --------------------------------------------------------------------------------------------
 // test=DbTable deno run --import-map=import_map.json --unstable --allow-all db/db_table.ts
 test("DbTable", async () => {
-  // Configuration could be done in separate runtime config
-  Db.instantiate(new Db("default", "deno_unit_tests"), true)
-
   // Will connect lazily and reconnected in case of connection error
-  const db = Db.instance()
+  const db = new Db("default", "deno_unit_tests")
 
   // Executing schema befor any other DB query, will be executed lazily before the first use
   db.before(sql`

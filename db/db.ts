@@ -36,17 +36,6 @@ export class Db {
     this.log = new Log("Db", this.id)
   }
 
-  private static readonly dbs = new Map<string, Db>()
-  static instance(id = "default"): Db {
-    let db = this.dbs.get(id)
-    if (!db) throw new Error(`can't find db instance ${id}`)
-    return db
-  }
-  static instantiate(db: Db, override = false): void {
-    if (this.dbs.has(db.id) && !override) throw new Error(`can't re define db instance ${db.id}`)
-    this.dbs.set(db.id, db)
-  }
-
   table<T extends object>(name: string, ids = ["id"], auto_id = false): DbTable<T> {
     return new DbTable<T>(this, name, ids, auto_id)
   }
@@ -85,7 +74,7 @@ export class Db {
     assert(this.pool == undefined, "pool can't be defined at this stage")
     let pool = this.createPool()
     try {
-      let conn = await pool.connect()
+      const conn = await pool.connect()
       await conn.queryObject("select 1")
       await conn.release()
     } catch(e) {
@@ -102,7 +91,7 @@ export class Db {
     // Applying callbacks
     this.log.info("applying before callbacks")
     try {
-      let conn = await pool.connect()
+      const conn = await pool.connect()
       for (const sql of this.beforecallbacks) {
         await conn.queryObject(sql.sql, ...sql.values)
       }
@@ -118,7 +107,9 @@ export class Db {
 
   private prepared = false
   private prepareInProgress?: Promise<void>
-  private async prepare() {
+
+  // Will be called lazily, also could be called explicitly
+  async prepare(): Promise<void> {
     // Applying before callbacks
     if (this.prepared)          return
     if (this.prepareInProgress) return this.prepareInProgress
@@ -134,14 +125,13 @@ export class Db {
 
   private async withConnection<T>(op: (conn: PoolClient) => Promise<T>): Promise<T> {
     await this.prepare()
-    let conn: PoolClient | undefined = undefined
     this.pool == this.pool || this.createPool()
     const pool = this.pool!
     try {
-      conn = await pool.connect()
-      const result = await op(conn)
+      const conn = await pool.connect()
+      const r = await op(conn)
       await conn.release()
-      return result
+      return r
     } catch(e) {
       this.log.with(e).error("can't execute, reconnecting")
       if (this.pool == pool) this.pool = undefined
@@ -162,8 +152,8 @@ export class Db {
     })
   }
 
-  async get<T>(sql: SQL, log?: (log: Log) => void): Promise<T[]> {
-    let { rows } = await this.withConnection((conn) => {
+  async filter<T>(sql: SQL, log?: (log: Log) => void): Promise<T[]> {
+    const { rows } = await this.withConnection((conn) => {
       (log || this.defaultLog(sql, "get"))(this.log)
       return conn.queryObject(sql.sql, ...sql.values)
     })
@@ -171,26 +161,36 @@ export class Db {
   }
 
   async fget<T>(sql: SQL, log?: (log: Log) => void): Promise<T | undefined> {
-    let rows = await this.get<T>(sql, log || this.defaultLog(sql, "fget"))
+    const rows = await this.filter<T>(sql, log || this.defaultLog(sql, "get"))
     if (rows.length > 1) throw new Error(`expected single result but got ${rows.length} rows`)
     if (rows.length < 1) return undefined
     return rows[0]
   }
 
-  async getOne<T>(sql: SQL, log?: (log: Log) => void): Promise<T> {
-    let rows = await this.get<T>(sql, log || this.defaultLog(sql, "getOne"))
-    if (rows.length > 1) throw new Error(`expected single row but got ${rows.length} rows`)
-    if (rows.length < 1) throw new Error(`expected single row but got none`)
-    return rows[0]
+  async get<T>(sql: SQL, log?: (log: Log) => void): Promise<T> {
+    let r = await this.fget<T>(sql, log)
+    if (r == undefined) throw new Error(`expected single row but got none`)
+    return r
   }
 
-  async getValue<T extends number | string | boolean>(sql: SQL, log?: (log: Log) => void): Promise<T> {
-    let rows = await this.get(sql, log || this.defaultLog(sql, "getOne"))
-    if (rows.length > 1) throw new Error(`expected single row but got ${rows.length} rows`)
-    if (rows.length < 1) throw new Error(`expected single row but got none`)
-    let row = rows[0]
+  async fgetValue<T extends number | string | boolean>(
+    sql: SQL, log?: (log: Log) => void
+  ): Promise<T | undefined> {
+    let row = await this.fget<object>(sql, log)
+    if (row == undefined) return undefined
 
-    let allKeys = Object.keys(row as object)
+    const allKeys = Object.keys(row)
+    if (allKeys.length > 1) throw new Error(`expected single value in row but got ${allKeys.length} columns`)
+    if (allKeys.length < 1) return undefined
+    return (row as something)[allKeys[0]]
+  }
+
+  async getValue<T extends number | string | boolean>(
+    sql: SQL, log?: (log: Log) => void
+  ): Promise<T> {
+    let row = await this.get<object>(sql, log)
+
+    const allKeys = Object.keys(row)
     if (allKeys.length > 1) throw new Error(`expected single value in row but got ${allKeys.length} columns`)
     if (allKeys.length < 1) throw new Error(`expected single value in row but got nothing`)
     return (row as something)[allKeys[0]]
@@ -212,11 +212,8 @@ export class Db {
 // Test --------------------------------------------------------------------------------------------
 // test=Db deno run --import-map=import_map.json --unstable --allow-all db/db.ts
 test("Db", async () => {
-  // Configuration should be done in separate runtime config
-  Db.instantiate(new Db("default", "deno_unit_tests"), true)
-
-  // Will be connected lazily and reconnected in case of connection error
-  const db = Db.instance()
+  // Will be connected lazily and reconnect in case of connection error
+  const db = new Db("default", "deno_unit_tests")
 
   // Executing schema befor any other DB query, will be executed lazily before the first use
   db.before(sql`
@@ -231,7 +228,7 @@ test("Db", async () => {
   await db.exec(sql`insert into users (name, age) values (${"Jim"}, ${30})`)
 
   assert.equal(
-    await db.get(sql`select name, age from users order by name`),
+    await db.filter(sql`select name, age from users order by name`),
     [{ name: "Jim", age: 30 }]
   )
 

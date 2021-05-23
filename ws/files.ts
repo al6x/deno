@@ -12,8 +12,7 @@ export class Files {
 
   constructor(
     public readonly path:           string,
-    // public readonly db:             Db,
-                    db:             Db,
+    public readonly db:             Db,
     public readonly max_object_b:   number = 2_000_000,
     public readonly max_per_user_b: number = 10_000_000
   ) {
@@ -112,8 +111,7 @@ const create_files_schema = `
 // Test --------------------------------------------------------------------------------------------
 // test=Files deno run --import-map=import_map.json --unstable --allow-all ws/files.ts
 test("Files", async () => {
-  Db.instantiate(new Db("default", "deno_unit_tests"), true)
-  const db = Db.instance()
+  const db = new Db("default", "deno_unit_tests")
   // await db.exec(create_files_schema, (log) => log.info("creating files schema"))
 
   const files = new Files("./tmp/files_test", db)

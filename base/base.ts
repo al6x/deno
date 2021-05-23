@@ -336,6 +336,7 @@ export function once<F extends Function>(f: F): F {
     if (called) return result
     result = f.apply(this, arguments)
     called = true
+    return result
   } as something
 }
 

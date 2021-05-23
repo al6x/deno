@@ -34,6 +34,7 @@ export function toYyyyMmDdHhMmSs(timestamp: number): string {
   return `${year}-${month < 10 ? '0' + month : month}-${day < 10 ? '0' + day : day}` +
     ` ${hour < 10 ? '0' + hour : hour}:${min < 10 ? '0' + min : min}:${sec < 10 ? '0' + sec : sec}`
 }
+export { toYyyyMmDdHhMmSs as formatTime }
 
 
 export function yyyyMmToYm(yyyyMm: string): [number, number] {

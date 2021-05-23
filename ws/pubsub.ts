@@ -69,7 +69,7 @@ export abstract class PubSub {
 
     // Checkign closed
     const closed: string[] = []
-    for (const [session_id, { client }] of this.sessions.entries()) {
+    for (const [session_id, { client }] of this.sessions) {
       if (client.closed) closed.push(session_id)
     }
     for (const session_id of closed) this.closeSession(session_id)
