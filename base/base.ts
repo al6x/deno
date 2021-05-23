@@ -50,7 +50,7 @@ export function p(...args: something): void {
 }
 
 // Test ---------------------------------------------------------------------
-const tests: [string, (() => void) | (() => Promise<void>)][] = []
+const tests: { name: string, test: (() => void) | (() => Promise<void>) }[] = []
 let lastRunnedTest = 0, testingInProgress = false
 function runTests () {
   if (testingInProgress) return
@@ -59,7 +59,7 @@ function runTests () {
   log.info("checking")
   setTimeout(async () => {
     while (lastRunnedTest < tests.length) {
-      let [name, test] = tests[lastRunnedTest]
+      let { name, test } = tests[lastRunnedTest]
       lastRunnedTest += 1
       try {
         let promise = test()
@@ -77,11 +77,12 @@ function runTests () {
 let testEnabledS: string
 try   { testEnabledS = (Deno.env.get("test") || "").toLowerCase() }
 catch { testEnabledS = "false" }
-let testEnabled = testEnabledS == "true"
+let slowTestEnabled = testEnabledS == "slow"
+let testEnabled = slowTestEnabled || (testEnabledS == "true")
 
-export function test(name: string, body: (() => void) | (() => Promise<void>)) {
-  if (testEnabled || testEnabledS == name.toLowerCase()) {
-    tests.push([name, body])
+export function test(name: string, test: (() => void) | (() => Promise<void>), isSlow = false) {
+  if ((testEnabled && !isSlow) || slowTestEnabled || name.toLowerCase() == testEnabledS) {
+    tests.push({ name, test })
     runTests()
   }
 }

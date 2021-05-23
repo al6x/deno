@@ -1,4 +1,4 @@
-import { p, something, assert, ensure } from "base/base.ts"
+import { p, something, assert, ensure, test } from "base/base.ts"
 import { Log } from "base/log.ts"
 import { sql, SQL, sqlToString, buildWhere } from "./sql.ts"
 import { Db } from "./db.ts"
@@ -161,13 +161,13 @@ export class DbTable<T extends object> {
 }
 
 // Test --------------------------------------------------------------------------------------------
-// deno run --import-map=import_map.json --unstable --allow-all db/db_table.ts
-if (import.meta.main) {
+// test=slow deno run --import-map=import_map.json --unstable --allow-all db/db_table.ts
+test("DbTable", async () => {
   // Configuration could be done in separate runtime config
-  Db.instantiate(new Db("test", "db_unit_test"))
+  Db.instantiate(new Db("default", "deno_unit_tests"), true)
 
   // Will connect lazily and reconnected in case of connection error
-  const db = Db.instance("test")
+  const db = Db.instance()
 
   // Executing schema befor any other DB query, will be executed lazily before the first use
   db.before(sql`
@@ -217,4 +217,4 @@ if (import.meta.main) {
   // del
   await users.del(jim)
   assert.equal(await users.count(), 0)
-}
+}, true)

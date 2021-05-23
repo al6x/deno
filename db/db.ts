@@ -1,4 +1,4 @@
-import { p, something, assert, keys } from "base/base.ts"
+import { p, something, assert, keys, test } from "base/base.ts"
 import { Log } from "base/log.ts"
 import { PgUrl, parsePgUrl, postProcessRow } from "./utils.ts"
 import { sql, SQL, sqlToString } from "./sql.ts"
@@ -210,10 +210,10 @@ export class Db {
 
 
 // Test --------------------------------------------------------------------------------------------
-// deno run --import-map=import_map.json --unstable --allow-all db/db.ts
-if (import.meta.main) {
+// test=slow deno run --import-map=import_map.json --unstable --allow-all db/db.ts
+test("Db", async () => {
   // Configuration should be done in separate runtime config
-  Db.instantiate(new Db("default", "db_unit_test"))
+  Db.instantiate(new Db("default", "deno_unit_tests"), true)
 
   // Will be connected lazily and reconnected in case of connection error
   const db = Db.instance()
@@ -239,4 +239,4 @@ if (import.meta.main) {
   assert.equal(
     await db.getValue<number>(sql`select count(*) from users where age = ${30}`), 1
   )
-}
+}, true)

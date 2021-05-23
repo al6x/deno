@@ -1,4 +1,4 @@
-import { p, last, assert } from "base/base.ts"
+import { p, last, assert, test } from "base/base.ts"
 import { Log } from "base/log.ts"
 import * as crypto from "base/crypto.ts"
 import * as fs from "base/fs.ts"
@@ -110,10 +110,9 @@ const create_files_schema = `
 
 
 // Test --------------------------------------------------------------------------------------------
-// deno run --import-map=import_map.json --unstable --allow-net --allow-read="./tmp" \
-// --allow-write="./tmp" --allow-run ws/files.ts
-if (import.meta.main) {
-  Db.instantiate(new Db("default", "deno_unit_tests"))
+// test=Files deno run --import-map=import_map.json --unstable --allow-all ws/files.ts
+test("Files", async () => {
+  Db.instantiate(new Db("default", "deno_unit_tests"), true)
   const db = Db.instance()
   // await db.exec(create_files_schema, (log) => log.info("creating files schema"))
 
@@ -138,4 +137,4 @@ if (import.meta.main) {
   assert.equal(found, "not found")
 
   assert.equal((await files.getFiles("alex", "plot")).map((f) => f.path), ["/index.html"])
-}
+}, true)
