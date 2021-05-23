@@ -194,9 +194,7 @@ export class Db {
 if (import.meta.main) {
   // No need to manage connections, it will be connected lazily and
   // reconnected in case of connection error
-  const db = new Db("deno_db_test")
-  // await db.drop
-  // await db.create()
+  const db = new Db("db_unit_test")
 
   // Executing schema befor any other DB query, will be executed lazily before the first use
   db.before(sql`
