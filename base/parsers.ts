@@ -41,7 +41,3 @@ test(() => {
   assert.equal(parseNumber('120K'), 120000)
   assert.equal(parseNumber('7.5 '), 7.5)
 })
-
-
-// trim --------------------------------------------------------------------------------------------
-export function trim(text: string): string { return text.replace(/^[\t\s\n]+|[\t\s\n]+$/g, '') }

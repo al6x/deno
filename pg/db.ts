@@ -1,6 +1,7 @@
-import { p, something } from "base/base.ts"
+import { p, something, assert, keys } from "base/base.ts"
 import { Log } from "base/log.ts"
 import { PgUrl, parsePgUrl } from "./utils.ts"
+import { sql, SQL, sqlToString } from "./sql.ts"
 import * as bash from "base/bash.ts"
 import { Pool, PoolClient } from "postgres/mod.ts"
 
@@ -20,18 +21,18 @@ export class Db {
   private readonly log:   Log
   public  readonly url:   PgUrl
 
-  private          before_callbacks_applied = false
-  private readonly before_callbacks:          (() => Promise<void>)[] = []
+  private readonly beforecallbacks: SQL[] = []
 
   constructor(
-    public readonly nameOrUrl: string,
-    public readonly poolSize:  number = 10
+    public readonly nameOrUrl:           string,
+    public readonly createDbIfNotExist = true,
+    public readonly poolSize           = 10
   ) {
     this.url = parsePgUrl(nameOrUrl)
     this.log = new Log("Db", this.url.name)
   }
 
-  async create(): Promise<void> {
+  async create() {
     this.log.info("create")
     const { code, stderr } = await bash.run(["createdb", "-U", this.url.user, this.url.name])
     if (code != 0 && !stderr.includes(`database "${this.url.name}" already exists`)) {
@@ -39,7 +40,7 @@ export class Db {
     }
   }
 
-  async drop(): Promise<void> {
+  async drop() {
     this.log.info("drop")
     const { code, stderr } = await bash.run(["dropdb", "-U", this.url.user, this.url.name])
     if (code != 0 && !stderr.includes(`database "${this.url.name}" does not exist`)) {
@@ -47,20 +48,80 @@ export class Db {
     }
   }
 
-  async close(): Promise<void> {
+  async close() {
     if (!this.pool) return
     this.log.error("close")
     const pool = this.pool
     try { await pool?.end() } catch {}
   }
 
-  async withConnection<T>(op: (conn: PoolClient) => Promise<T>): Promise<T> {
+  before(sql: SQL, prepend = false) {
+    if (this.prepared) throw new Error("too late, before callbacks already applied")
+    if (prepend) this.beforecallbacks.unshift(sql)
+    else         this.beforecallbacks.push(sql)
+  }
+
+  private async prepareSequential() {
+    // Auto creating database if needed
+    assert(this.pool == undefined, "pool can't be defined at this stage")
+    let pool = this.createPool()
+    try {
+      let conn = await pool.connect()
+      await conn.queryObject("select 1")
+      await conn.release()
+    } catch(e) {
+      try { await pool.end() } catch {}
+
+      if ((e.message || "").includes(`database "${this.url.name}" does not exist`) && this.createDbIfNotExist) {
+        await this.create()
+        pool = this.createPool()
+      } else {
+        throw e
+      }
+    }
+
+    // Applying callbacks
+    this.log.info("applying before callbacks")
+    try {
+      let conn = await pool.connect()
+      for (const sql of this.beforecallbacks) {
+        await conn.queryObject(sql.sql, ...sql.values)
+      }
+      this.log.info("before callbacks applied")
+      await conn.release()
+      this.pool = pool
+    } catch(e) {
+      this.log.with(e).error("can't apply before callbacks, reconnecting")
+      try { await pool.end() } catch {}
+      throw e
+    }
+  }
+
+  private prepared = false
+  private prepareInProgress?: Promise<void>
+  private async prepare() {
+    // Applying before callbacks
+    if (this.prepared)          return
+    if (this.prepareInProgress) return this.prepareInProgress
+
+    try {
+      this.prepareInProgress = this.prepareSequential()
+      await this.prepareInProgress
+      this.prepared = true
+    } finally {
+      this.prepareInProgress = undefined
+    }
+  }
+
+  private async withConnection<T>(op: (conn: PoolClient) => Promise<T>): Promise<T> {
+    await this.prepare()
     let conn: PoolClient | undefined = undefined
-    const pool = this.getPool()
+    this.pool == this.pool || this.createPool()
+    const pool = this.pool!
     try {
       conn = await pool.connect()
       const result = await op(conn)
-      await conn?.release()
+      await conn.release()
       return result
     } catch(e) {
       this.log.with(e).error("can't execute, reconnecting")
@@ -70,90 +131,95 @@ export class Db {
     }
   }
 
-
-  async withConnection<T>(op: (conn: PoolClient) => Promise<T>): Promise<T> {
-    let conn: PoolClient | undefined = undefined
-    const pool = this.getPool()
-    try {
-      conn = await pool.connect()
-      const result = await op(conn)
-      await conn?.release()
-      return result
-    } catch(e) {
-      this.log.with(e).error("can't execute, reconnecting")
-      if (this.pool == pool) this.pool = undefined
-      try { await pool.end() } catch {}
-      throw e
-    }
+  private defaultLog(sql: SQL, message: string) {
+    return (log: Log) => { log.with({ sql: sqlToString(sql) }).info(`${message} '{sql}'`) }
   }
 
-  async exec<T = unknown[]>(sql: string, params: something[], log: (log: Log) => void): Promise<T[]>
-  async exec<T = unknown[]>(sql: string, log: (log: Log) => void): Promise<T[]>
-  async exec<T = unknown[]>(
-    sql: string,
-    paramsOrLog: (something[] | ((log: Log) => void)) = [],
-    log3: ((log: Log) => void) = (log) => log.info("exec")
-  ): Promise<T[]> {
-    let params: something[] = paramsOrLog instanceof Function ? [] : paramsOrLog
-    let log: ((log: Log) => void) = paramsOrLog instanceof Function ? paramsOrLog : log3
-
-    log(this.log)
-
-    if (params.length == 0) {
-      let { rows } = await this.withConnection((conn) => conn.queryArray(sql))
-      return (rows as something)
-    } else {
-      let { rows } = await this.withConnection((conn) => conn.queryArray({ text: sql, args: params }))
-      return (rows as something)
-    }
+  async exec<T extends Record<string, unknown>>(sql: SQL, log?: (log: Log) => void) {
+    await this.withConnection((conn) => {
+      (log || this.defaultLog(sql, "exec"))(this.log)
+      return conn.queryObject<T>(sql.sql, ...sql.values)
+    })
   }
 
-  private getPool() {
-    if (this.pool == undefined) {
-      this.log.info("connect")
-      this.pool = new Pool({
-        hostname: this.url.host,
-        port:     this.url.port,
-        user:     this.url.user,
-        password: this.url.password,
-        database: this.url.name
-      }, this.poolSize, true)
-    }
-    return this.pool
+  async get<T extends Record<string, unknown>>(sql: SQL, log?: (log: Log) => void): Promise<T[]> {
+    let { rows } = await this.withConnection((conn) => {
+      (log || this.defaultLog(sql, "get"))(this.log)
+      return conn.queryObject<T>(sql.sql, ...sql.values)
+    })
+    return rows
+  }
+
+  async fget<T extends Record<string, unknown>>(sql: SQL, log?: (log: Log) => void): Promise<T | undefined> {
+    let rows = await this.get<T>(sql, log || this.defaultLog(sql, "fget"))
+    if (rows.length > 1) throw new Error(`expected single result but got ${rows.length} rows`)
+    if (rows.length < 1) return undefined
+    return rows[0]
+  }
+
+  async getOne<T extends Record<string, unknown>>(sql: SQL, log?: (log: Log) => void): Promise<T> {
+    let rows = await this.get<T>(sql, log || this.defaultLog(sql, "getOne"))
+    if (rows.length > 1) throw new Error(`expected single row but got ${rows.length} rows`)
+    if (rows.length < 1) throw new Error(`expected single row but got none`)
+    return rows[0]
+  }
+
+  async getValue<T extends number | string | boolean>(sql: SQL, log?: (log: Log) => void): Promise<T> {
+    let rows = await this.get(sql, log || this.defaultLog(sql, "getOne"))
+    if (rows.length > 1) throw new Error(`expected single row but got ${rows.length} rows`)
+    if (rows.length < 1) throw new Error(`expected single row but got none`)
+    let row = rows[0]
+
+    let allKeys = keys(row)
+    if (allKeys.length > 1) throw new Error(`expected single value in row but got ${allKeys.length} columns`)
+    if (allKeys.length < 1) throw new Error(`expected single value in row but got nothing`)
+    return (row as something)[allKeys[0]]
+  }
+
+  private createPool(): Pool {
+    this.log.info("connect")
+    return new Pool({
+      hostname: this.url.host,
+      port:     this.url.port,
+      user:     this.url.user,
+      password: this.url.password,
+      database: this.url.name
+    }, this.poolSize, true)
   }
 }
-
-
-
-
 
 
 // Test --------------------------------------------------------------------------------------------
 // deno run --import-map=import_map.json --unstable --allow-net --allow-run pg/db.ts
 if (import.meta.main) {
-  const db = new Db("deno_test")
-  await db.create()
-  // await db.exec(create_files_schema, (log) => log.info("creating files schema"))
+  // No need to manage connections, it will be connected lazily and
+  // reconnected in case of connection error
+  const db = new Db("deno_db_test")
+  // await db.drop
+  // await db.create()
 
-  // const files = new Files("./tmp/files_test", db)
+  // Try URL string
 
-  // function tou8a(s: string) { return new TextEncoder().encode(s) }
 
-  // await files.setFile("alex", "plot", "/index.html", crypto.hash("some html", 'sha256'), tou8a("some html"))
-  // await files.setFile("alex", "plot", "/scripts/script.js", crypto.hash("some js", 'sha256'), tou8a("some js"))
+  // Executing schema befor any other DB query, will be executed lazily before the first use
+  db.before(sql`
+    drop table if exists users;
 
-  // assert.equal(await files.getFile("alex", "plot", "/index.html"), tou8a("some html"))
-  // assert.equal(await files.getFile("alex", "plot", "/scripts/script.js"), tou8a("some js"))
+    create table users(
+      name varchar(100) not null,
+      age  integer      not null
+    );
+  `)
 
-  // await files.delFile("alex", "plot", "/scripts/script.js")
-  // let found: string
-  // try {
-  //   await files.getFile("alex", "plot", "/scripts/script.js")
-  //   found = "found"
-  // } catch {
-  //   found = "not found"
-  // }
-  // assert.equal(found, "not found")
+  await db.exec(sql`insert into users (name, age) values (${"Jim"}, ${30})`)
 
-  // assert.equal((await files.getFiles("alex", "plot")).map((f) => f.path), ["/index.html"])
+  assert.equal(
+    await db.get(sql`select name, age from users order by name`),
+    [{ name: "Jim", age: 30 }]
+  )
+
+  // Count
+  assert(
+    await db.getValue<number>(sql`select count(*) from users where age = ${30}`) == 1
+  )
 }

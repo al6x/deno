@@ -1,7 +1,11 @@
-import { p, assert, test, something } from "base/base.ts"
+import { p, assert, test, something, trim } from "base/base.ts"
 
 export type SQLValue = object | null | string | number | boolean
-export type SQL = [string, SQLValue[]]
+export type SQL = { sql: string, values: SQLValue[] }
+
+export function sqlToString(sql: SQL) {
+  return trim(sql.sql.replace(/[\n\s]+/g, " ")) + (sql.values.length > 0 ? ` <- ${sql.values.join(", ")}` : "")
+}
 
 function sql(literals: TemplateStringsArray, ...values: SQLValue[]): SQL
 function sql(sql: string, values: object): SQL
@@ -10,6 +14,7 @@ function sql(...args: something[]): SQL {
   let fn = Array.isArray(args[0]) ? sqlLiteral : sqlParams
   return (fn as something).apply(null, args)
 }
+export { sql }
 
 function sqlLiteral(literals: TemplateStringsArray, ...placeholders: SQLValue[]): SQL {
   let sql: string[] = [], values: SQLValue[] = []
@@ -46,7 +51,7 @@ function sqlLiteral(literals: TemplateStringsArray, ...placeholders: SQLValue[])
       }
     }
   }
-  return [sql.join(''), values]
+  return { sql: sql.join(''), values }
 }
 
 test("sqlLiteral", () => {
@@ -94,7 +99,7 @@ export function sqlParams(sql: string, values: object, validateUnusedKeys = true
     }
   }
 
-  return [replacedSql, orderedValues]
+  return { sql: replacedSql, values: orderedValues }
 }
 
 

@@ -194,7 +194,7 @@ export function buildUrl(
 }
 
 // sleep --------------------------------------------------------------------------
-export async function sleep(ms: number): Promise<void> {
+export async function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
@@ -390,6 +390,10 @@ export function length<T>(o: Array<T> | { [key: string]: T } | String | string):
 export function isEmpty<T>(o: Array<T> | { [key: string]: T } | String | string): boolean {
   return length(o) == 0
 }
+
+
+// trim --------------------------------------------------------------------------------------------
+export function trim(text: string): string { return text.replace(/^[\t\s\n]+|[\t\s\n]+$/g, '') }
 
 
 // take ---------------------------------------------------------------------------

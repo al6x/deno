@@ -5,7 +5,7 @@ export async function onShellCall<BeforeOutput>({ before, process, after } : {
   before:  (beforeInput: something) => Promise<BeforeOutput>,
   process: (beforeOputput: BeforeOutput, input: something) => Promise<something>,
   after:   (beforeOputput: BeforeOutput | undefined, afterInput: something) => Promise<void>
-}): Promise<void> {
+}) {
   assert.equal(Deno.args.length, 1, "only one argument expected")
   let data = JSON.parse(Deno.args[0])
 

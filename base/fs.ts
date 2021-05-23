@@ -56,13 +56,13 @@ export { readFileSync }
 export async function writeFile(
   path:     string,
   data:     string | Uint8Array
-): Promise<void> { return writeFileImpl(path, data, false) }
+) { return writeFileImpl(path, data, false) }
 
 async function writeFileImpl(
   path:   string,
   data:   string | Uint8Array,
   append: boolean
-): Promise<void> {
+) {
   let buffer: Uint8Array = data instanceof Uint8Array ? data : (new TextEncoder()).encode(data)
   try {
     Deno.writeFileSync(path, buffer, { append })
@@ -101,7 +101,7 @@ export function writeFileSync(
 export async function appendToFile(
   path:     string,
   data:     string | Uint8Array
-): Promise<void> { writeFileImpl(path, data, true) }
+) { writeFileImpl(path, data, true) }
 
 
 // readJson ---------------------------------------------------------------------------------------
@@ -111,13 +111,13 @@ export async function readJson<T = something>(path: string): Promise<T> {
 
 
 // writeJson --------------------------------------------------------------------------------------
-export async function writeJson<T>(path: string, data: T): Promise<void> {
+export async function writeJson<T>(path: string, data: T) {
   await writeFile(path, toJson(data))
 }
 
 // rename ------------------------------------------------------------------------------------------
 // Creates parent directories automatically for destination
-export async function rename(from: string, to: string, options?: { overwrite?: boolean }): Promise<void> {
+export async function rename(from: string, to: string, options?: { overwrite?: boolean }) {
   options = options || {}
   const overwrite = 'overwrite' in options ? options.overwrite : false
   try {
@@ -135,7 +135,7 @@ export async function rename(from: string, to: string, options?: { overwrite?: b
 
 // copy --------------------------------------------------------------------------------------------
 // Copy file or directory, creates parent directories automatically for destination
-export async function copy(from: string, to: string, options?: { overwrite?: boolean }): Promise<void> {
+export async function copy(from: string, to: string, options?: { overwrite?: boolean }) {
   options = options || {}
   const overwrite = 'overwrite' in options ? options.overwrite : false
   try {
@@ -153,7 +153,7 @@ export async function copy(from: string, to: string, options?: { overwrite?: boo
 
 // createDirectory --------------------------------------------------------------------------------
 // Creates parent directory automatically
-export async function createDirectory(path: string): Promise<void> { await denoFs.ensureDir(path) }
+export async function createDirectory(path: string) { await denoFs.ensureDir(path) }
 
 
 // exists ------------------------------------------------------------------------------------------
@@ -177,7 +177,7 @@ export async function isEmpty(path: string): Promise<boolean> {
 export async function remove(
   path: string,
   options?: { recursive?: boolean, deleteEmptyParents?: boolean }
-): Promise<void> {
+) {
   options = options || {}
   const recursive = 'recursive' in options ? options.recursive : false
   let success = false
@@ -206,7 +206,7 @@ export const notTmpDirectoryMessage = `temp directory expected to have 'tmp' or 
 
 
 // delete_tmp_directory ----------------------------------------------------------------------------
-export async function removeTmpDirectory(path: string): Promise<void> {
+export async function removeTmpDirectory(path: string) {
   // Checking if it's tmp for safety, so you don't accidentally delete non tmp directory.
   assert(isTmpDirectory(path), notTmpDirectoryMessage)
   await remove(path, { recursive: true })

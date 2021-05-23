@@ -100,7 +100,7 @@ export class Log {
         const key = skey.substring(1, skey.length - 1)
         value = (this.data as something)[key] || key
       }
-      return value.replace(/\n/g, " ")
+      return ("" + value).replace(/\n/g, " ")
     })
   }
 }

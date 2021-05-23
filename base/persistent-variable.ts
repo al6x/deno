@@ -16,7 +16,7 @@ export class PersistentVariable<T extends {}> {
     }
   }
 
-  async delete(): Promise<void> { await fs.remove(this.fname) }
+  async delete() { await fs.remove(this.fname) }
 
-  async write(value: T): Promise<void> { await fs.writeJson(this.fname, value) }
+  async write(value: T) { await fs.writeJson(this.fname, value) }
 }

@@ -36,7 +36,7 @@ export class Files {
     return fs.exists(this.filePath(user_id, project_id, path))
   }
 
-  async setFile(user_id: string, project_id: string, path: string, hash: string, data: Uint8Array): Promise<void> {
+  async setFile(user_id: string, project_id: string, path: string, hash: string, data: Uint8Array) {
     this.log
       .with({ user_id, project_id, path, hash })
       .info("save_file {user_id}.{project_id} {path}")
@@ -64,7 +64,7 @@ export class Files {
     )
   }
 
-  async delFile(user_id: string, project_id: string, path: string): Promise<void> {
+  async delFile(user_id: string, project_id: string, path: string) {
     this.log
       .with({ user_id, project_id, path })
       .info("del_file {user_id}.{project_id} {path}")
