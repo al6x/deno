@@ -1,6 +1,8 @@
 {
   "imports": {
     "base/": "/alex/projects/deno/base/",
+    "db/": "/alex/projects/deno/db/",
+
     "postgres/": "https://deno.land/x/postgres@v0.11.2/"
   }
 }

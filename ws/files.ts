@@ -2,7 +2,7 @@ import { p, last, assert } from "base/base.ts"
 import { Log } from "base/log.ts"
 import * as crypto from "base/crypto.ts"
 import * as fs from "base/fs.ts"
-import { Db } from "./db.ts"
+import { Db } from "db/db.ts"
 
 
 // Files -------------------------------------------------------------------------------------------
