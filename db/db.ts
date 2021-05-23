@@ -1,10 +1,11 @@
 import { p, something, assert, keys, test } from "base/base.ts"
 import { Log } from "base/log.ts"
-import { PgUrl, parsePgUrl, postProcessRow } from "./utils.ts"
+import { PgUrl, parsePgUrl, decode, encode } from "./utils.ts"
 import { sql, SQL, sqlToString } from "./sql.ts"
 import * as bash from "base/bash.ts"
 import { Pool, PoolClient } from "postgres/mod.ts"
 import { DbTable } from "./db_table.ts"
+import { formatTime } from "base/time.ts"
 
 // Hiding notice warnings, should be removed when issue fixed
 // https://github.com/denodrivers/postgres/issues/254
@@ -17,6 +18,8 @@ import { Connection } from "postgres/connection/connection.ts"
 
 export { sql }
 export type { SQL }
+
+export type DbValue = number | string | boolean | Date
 
 // Db ----------------------------------------------------------------------------------------------
 export class Db {
@@ -58,7 +61,7 @@ export class Db {
 
   async close() {
     if (!this.pool) return
-    this.log.error("close")
+    this.log.info("close")
     const pool = this.pool
     try { await pool?.end() } catch {}
   }
@@ -93,7 +96,7 @@ export class Db {
     try {
       const conn = await pool.connect()
       for (const sql of this.beforecallbacks) {
-        await conn.queryObject(sql.sql, ...sql.values)
+        await conn.queryObject(sql.sql, ...encode(sql.values))
       }
       this.log.info("before callbacks applied")
       await conn.release()
@@ -147,7 +150,7 @@ export class Db {
   async exec(sql: SQL, log?: (log: Log) => void): Promise<void> {
     await this.withConnection(async (conn) => {
       (log || this.defaultLog(sql, "exec"))(this.log)
-      await conn.queryObject(sql.sql, ...sql.values)
+      await conn.queryObject(sql.sql, ...encode(sql.values))
       return "nothing"
     })
   }
@@ -155,9 +158,11 @@ export class Db {
   async filter<T>(sql: SQL, log?: (log: Log) => void): Promise<T[]> {
     const { rows } = await this.withConnection((conn) => {
       (log || this.defaultLog(sql, "get"))(this.log)
-      return conn.queryObject(sql.sql, ...sql.values)
+      const r = conn.queryObject(sql.sql, ...encode(sql.values))
+      // r.then(p)
+      return r
     })
-    return rows.map(postProcessRow) as T[]
+    return rows.map(decode) as T[]
   }
 
   async fget<T>(sql: SQL, log?: (log: Log) => void): Promise<T | undefined> {
@@ -173,9 +178,7 @@ export class Db {
     return r
   }
 
-  async fgetValue<T extends number | string | boolean>(
-    sql: SQL, log?: (log: Log) => void
-  ): Promise<T | undefined> {
+  async fgetValue<T extends DbValue>(sql: SQL, log?: (log: Log) => void): Promise<T | undefined> {
     let row = await this.fget<object>(sql, log)
     if (row == undefined) return undefined
 
@@ -185,9 +188,7 @@ export class Db {
     return (row as something)[allKeys[0]]
   }
 
-  async getValue<T extends number | string | boolean>(
-    sql: SQL, log?: (log: Log) => void
-  ): Promise<T> {
+  async getValue<T extends DbValue>(sql: SQL, log?: (log: Log) => void): Promise<T> {
     let row = await this.get<object>(sql, log)
 
     const allKeys = Object.keys(row)
@@ -218,22 +219,45 @@ test("Db", async () => {
   // Executing schema befor any other DB query, will be executed lazily before the first use
   db.before(sql`
     drop table if exists users;
-
     create table users(
       name varchar(100) not null,
       age  integer      not null
     );
+
+    drop table if exists times;
+    create table times(
+      id   varchar(100) not null,
+      time timestamp not null
+    );
   `)
 
-  await db.exec(sql`insert into users (name, age) values (${"Jim"}, ${30})`)
+  // CRUD
+  {
+    await db.exec(sql`insert into users (name, age) values (${"Jim"}, ${30})`)
 
-  assert.equal(
-    await db.filter(sql`select name, age from users order by name`),
-    [{ name: "Jim", age: 30 }]
-  )
+    assert.equal(
+      await db.filter(sql`select name, age from users order by name`),
+      [{ name: "Jim", age: 30 }]
+    )
 
-  // Count
-  assert.equal(
-    await db.getValue<number>(sql`select count(*) from users where age = ${30}`), 1
-  )
+    // Count
+    assert.equal(
+      await db.getValue<number>(sql`select count(*) from users where age = ${30}`), 1
+    )
+  }
+
+  // Timezone
+  {
+    const now = new Date()
+    await db.exec(sql`insert into times (id, time) values ('a', ${now})`)
+    await db.exec(sql`insert into times (id, time) values ('b', ${formatTime(now)})`)
+
+    const a = await db.getValue<Date>(sql`select time from times where id = 'a'`)
+    const b = await db.getValue<Date>(sql`select time from times where id = 'b'`)
+    assert(a instanceof Date)
+    assert(b instanceof Date)
+    assert.equal(formatTime(a), formatTime(b))
+  }
+
+  await db.close()
 }, true)

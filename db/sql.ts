@@ -1,10 +1,12 @@
 import { p, assert, test, something, trim, sort } from "base/base.ts"
+import { formatTime } from "base/time.ts"
 
-export type SQLValue = object | null | string | number | boolean
+export type SQLValue = object | null | string | number | boolean | Date
 export type SQL = { sql: string, values: SQLValue[] }
 
 export function sqlToString(sql: SQL) {
-  return trim(sql.sql.replace(/[\n\s]+/g, " ")) + (sql.values.length > 0 ? ` <- ${sql.values.join(", ")}` : "")
+  return trim(sql.sql.replace(/[\n\s]+/g, " ")) +
+    (sql.values.length > 0 ? ` <- ${sql.values.map(sqlValueToString).join(", ")}` : "")
 }
 
 function isSql(o: something): o is SQL {
@@ -143,6 +145,11 @@ export function buildWhere<W>(where: W, ids: string[]): SQL {
   } else {
     throw `unsupported where clause {where}`
   }
+}
+
+function sqlValueToString(v: SQLValue): string {
+  if (typeof v == "object" && v instanceof Date) return formatTime(v)
+  return "" + v
 }
 
 test("buildQuery", () => {

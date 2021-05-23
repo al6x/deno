@@ -135,4 +135,6 @@ test("Files", async () => {
   assert.equal(found, "not found")
 
   assert.equal((await files.getFiles("alex", "plot")).map((f) => f.path), ["/index.html"])
+
+  await db.close()
 }, true)

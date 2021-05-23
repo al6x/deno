@@ -26,7 +26,8 @@ function toYyyyMmDd(y: number, m?: number, d?: number): string {
 export { toYyyyMmDd }
 
 
-export function toYyyyMmDdHhMmSs(timestamp: number): string {
+export function toYyyyMmDdHhMmSs(time: number | Date): string {
+  const timestamp = time instanceof Date ? time.valueOf() : time
   if (timestamp < 10000) throw new Error(`value for timestamp is too low, probably an error`)
   const date = new Date(timestamp)
   let year = date.getUTCFullYear(), month = date.getUTCMonth() + 1, day = date.getUTCDate()

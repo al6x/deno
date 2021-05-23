@@ -1,10 +1,12 @@
 import { assert, p, test, something } from "base/base.ts"
+import { formatTime } from "base/time.ts"
 
-// Converting BitInt to Number
-export function postProcessRow<T extends object>(row: T): T {
+export function decode<T extends object>(row: T): T {
   const o: something = {}
   for (const k in row) {
     const v = row[k]
+
+    // Converting BitInt to Number
     if (typeof v == "bigint") {
       const n = Number(v)
       if ((n as something) != (v as something)) throw new Error(`can't convert BigInt to Number, ${v}`)
@@ -12,8 +14,23 @@ export function postProcessRow<T extends object>(row: T): T {
     } else {
       o[k] = v
     }
+
+    // Fixing time zone for date
+
   }
   return o
+}
+
+export function encode(values: unknown[]): unknown[] {
+  return values.map((v) => {
+    if (typeof v == "object") {
+      if (v instanceof Date) {
+        // Encoding Date as GMT string, with resolutions for seconds only
+        return formatTime(v.valueOf())
+      }
+    }
+    return v
+  })
 }
 
 // PgUrl ------------------------------------------------------------------------------------------

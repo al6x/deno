@@ -214,4 +214,6 @@ test("DbTable", async () => {
   // del
   await users.del(jim)
   assert.equal(await users.count(), 0)
+
+  await db.close()
 }, true)

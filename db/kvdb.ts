@@ -1,5 +1,4 @@
 import { p, something, assert, ensure, test } from "base/base.ts"
-import { formatTime } from "base/time.ts"
 import { Log } from "base/log.ts"
 import { sql, Db } from "./db_table.ts"
 
@@ -40,7 +39,7 @@ export class KVDb {
   set(scope: string, key: string, value: string): Promise<void> {
     this.log.with({ scope, key }).info("set {scope}/{key}")
 
-    const now = formatTime(Date.now())
+    const now = new Date()
     return this.db.exec(sql`
       insert into kv
         (scope,    key,    value,    created_at,  updated_at)
@@ -71,7 +70,7 @@ export class KVDb {
   take(scope: string, key: string, dflt: string): Promise<string>
   async take(scope: string, key: string, dflt?: string): Promise<string | undefined> {
     const r = await this.fget(scope, key)
-    if (r != undefined) this.del(scope, key)
+    if (r != undefined) await this.del(scope, key)
     return r || dflt
   }
 }
@@ -89,4 +88,6 @@ test("KVDb", async () => {
 
   assert.equal(await kvdb.take("test", "a", "none"), "b")
   assert.equal(await kvdb.take("test", "a", "none"), "none")
+
+  await db.close()
 }, true)
