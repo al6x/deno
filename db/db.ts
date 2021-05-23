@@ -14,6 +14,8 @@ import { Connection } from "postgres/connection/connection.ts"
   return parseNotice(msg)
 }
 
+export { sql }
+export type { SQL }
 
 // Db ----------------------------------------------------------------------------------------------
 export class Db {
@@ -24,12 +26,24 @@ export class Db {
   private readonly beforecallbacks: SQL[] = []
 
   constructor(
+    public readonly id:                  string,
     public readonly nameOrUrl:           string,
     public readonly createDbIfNotExist = true,
     public readonly poolSize           = 10
   ) {
     this.url = parsePgUrl(nameOrUrl)
-    this.log = new Log("Db", this.url.name)
+    this.log = new Log("Db", this.id)
+  }
+
+  private static readonly dbs = new Map<string, Db>()
+  static instance(id: string): Db {
+    let db = this.dbs.get(id)
+    if (!db) throw new Error(`can't find db instance ${id}`)
+    return db
+  }
+  static instantiate(db: Db, override = false): void {
+    if (this.dbs.has(db.id) && !override) throw new Error(`can't re define db instance ${db.id}`)
+    this.dbs.set(db.id, db)
   }
 
   async create() {
@@ -192,9 +206,12 @@ export class Db {
 // Test --------------------------------------------------------------------------------------------
 // deno run --import-map=import_map.json --unstable --allow-net --allow-run pg/db.ts
 if (import.meta.main) {
+  // Configuration should be done in separate runtime config
+  Db.instantiate(new Db("test", "db_unit_test"))
+
   // No need to manage connections, it will be connected lazily and
   // reconnected in case of connection error
-  const db = new Db("db_unit_test")
+  const db = Db.instance("test")
 
   // Executing schema befor any other DB query, will be executed lazily before the first use
   db.before(sql`
