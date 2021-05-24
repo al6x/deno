@@ -22,7 +22,7 @@ export class KVDb {
         primary key (scope, key)
       );
     `)
-    this.log = new Log("KVDb", this.id)
+    this.log = new Log(db.id, id)
   }
 
   fget(scope: string, key: string): Promise<string | undefined> {
@@ -78,7 +78,7 @@ export class KVDb {
 // Test --------------------------------------------------------------------------------------------
 // test=KVDb deno run --import-map=import_map.json --unstable --allow-all db/kvdb.ts
 test("KVDb", async () => {
-  const db = new Db("default", "deno_unit_tests")
+  const db = new Db("db", "deno_unit_tests")
   const kvdb = new KVDb("kv", db)
   await kvdb.delAll()
 

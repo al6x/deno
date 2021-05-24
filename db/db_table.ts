@@ -15,7 +15,7 @@ export class DbTable<T extends object> {
     public readonly ids:  string[],
     public readonly auto_id: boolean
   ) {
-    this.log = new Log("Db", `${db.id}.${this.name}`)
+    this.log = new Log(db.id, this.name)
   }
 
   // Could be overrided
@@ -164,7 +164,7 @@ export class DbTable<T extends object> {
 // test=DbTable deno run --import-map=import_map.json --unstable --allow-all db/db_table.ts
 test("DbTable", async () => {
   // Will connect lazily and reconnected in case of connection error
-  const db = new Db("default", "deno_unit_tests")
+  const db = new Db("db", "deno_unit_tests")
 
   // Executing schema befor any other DB query, will be executed lazily before the first use
   db.before(sql`

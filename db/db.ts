@@ -36,7 +36,7 @@ export class Db {
     public readonly poolSize           = 10
   ) {
     this.url = parsePgUrl(nameOrUrl)
-    this.log = new Log("Db", this.id)
+    this.log = new Log(this.id)
   }
 
   table<T extends object>(name: string, ids = ["id"], auto_id = false): DbTable<T> {
@@ -214,7 +214,7 @@ export class Db {
 // test=Db deno run --import-map=import_map.json --unstable --allow-all db/db.ts
 test("Db", async () => {
   // Will be connected lazily and reconnect in case of connection error
-  const db = new Db("default", "deno_unit_tests")
+  const db = new Db("db", "deno_unit_tests")
 
   // Executing schema befor any other DB query, will be executed lazily before the first use
   db.before(sql`
@@ -246,7 +246,7 @@ test("Db", async () => {
     )
   }
 
-  // Timezone
+  // Timezone, should always use GMT
   {
     const now = new Date()
     await db.exec(sql`insert into times (id, time) values ('a', ${now})`)
