@@ -74,7 +74,7 @@ export class Db {
 
   private async prepareSequential() {
     // Auto creating database if needed
-    assert(this.pool == undefined, "pool can't be defined at this stage")
+    assert(this.pool == undefined, "internal error, pool can't be defined at this stage")
     let pool = this.createPool()
     try {
       const conn = await pool.connect()
@@ -92,19 +92,21 @@ export class Db {
     }
 
     // Applying callbacks
-    this.log.info("applying before callbacks")
-    try {
-      const conn = await pool.connect()
-      for (const sql of this.beforecallbacks) {
-        await conn.queryObject(sql.sql, ...encode(sql.values))
+    if (this.beforecallbacks.length > 0) {
+      this.log.info("applying before callbacks")
+      try {
+        const conn = await pool.connect()
+        for (const sql of this.beforecallbacks) {
+          await conn.queryObject(sql.sql, ...encode(sql.values))
+        }
+        // this.log.info("before callbacks applied")
+        await conn.release()
+        this.pool = pool
+      } catch(e) {
+        this.log.with(e).error("can't apply before callbacks, reconnecting")
+        try { await pool.end() } catch {}
+        throw e
       }
-      this.log.info("before callbacks applied")
-      await conn.release()
-      this.pool = pool
-    } catch(e) {
-      this.log.with(e).error("can't apply before callbacks, reconnecting")
-      try { await pool.end() } catch {}
-      throw e
     }
   }
 
