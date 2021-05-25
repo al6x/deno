@@ -1,6 +1,6 @@
 import { p, something, assert, ensure, slowTest } from "base/base.ts"
 import { Log } from "base/log.ts"
-import { sql, SQL, sqlToString, buildWhere } from "./sql.ts"
+import { sql, SQL, sqlToString, buildWhere, Where } from "./sql.ts"
 import { Db } from "./db.ts"
 
 export type { SQL }
@@ -98,8 +98,8 @@ export class DbTable<T extends object> {
   }
 
 
-  async filter<W>(where?: W, limit = 0, log?: (log: Log) => void): Promise<T[]> {
-    const whereSql = buildWhere(where || sql``, this.ids)
+  async filter(where?: Where<T>, limit = 0, log?: (log: Log) => void): Promise<T[]> {
+    const whereSql = buildWhere<T>(where || sql``, this.ids)
     // let defaultLog = (log: Log) => log.with({ where: sqlToString(whereSql) }).info("filter '{where}'")
     ;(log || defaultWhereLog(whereSql, "filter"))(this.log)
 
@@ -110,8 +110,8 @@ export class DbTable<T extends object> {
   }
 
 
-  async fget<W>(where?: W, log?: (log: Log) => void): Promise<T | undefined> {
-    const whereSql = buildWhere(where || sql``, this.ids)
+  async fget(where?: Where<T>, log?: (log: Log) => void): Promise<T | undefined> {
+    const whereSql = buildWhere<T>(where || sql``, this.ids)
     // let defaultLog = (log: Log) => log.with({ where: sqlToString(whereSql) }).info("get_one '{where}'")
     ;(log || defaultWhereLog(whereSql, "get"))(this.log)
     const found = await this.filter(where, 2, () => {})
@@ -120,8 +120,8 @@ export class DbTable<T extends object> {
   }
 
 
-  async del<W>(where?: W, log?: (log: Log) => void): Promise<void> {
-    const whereSql = buildWhere(where || sql``, this.ids)
+  async del(where?: Where<T>, log?: (log: Log) => void): Promise<void> {
+    const whereSql = buildWhere<T>(where || sql``, this.ids)
     // let defaultLog = (log: Log) => log.with({ where: sqlToString(whereSql) }).info("del '{where}'")
     ;(log || defaultWhereLog(whereSql, "del"))(this.log)
     const query = `delete from ${this.name} where ${whereSql.sql}`
@@ -135,8 +135,8 @@ export class DbTable<T extends object> {
   }
 
 
-  count<W>(where?: W, log?: (log: Log) => void): Promise<number> {
-    const whereSql = buildWhere(where || sql``, this.ids)
+  count(where?: Where<T>, log?: (log: Log) => void): Promise<number> {
+    const whereSql = buildWhere<T>(where || sql``, this.ids)
     // let defaultLog = (log: Log) => log.with({ where: sqlToString(whereSql) }).info("count '{where}'")
     ;(log || defaultWhereLog(whereSql, "count"))(this.log)
 
@@ -146,8 +146,8 @@ export class DbTable<T extends object> {
   }
 
 
-  async has<W>(where?: W, log?: (log: Log) => void): Promise<boolean> {
-    const whereSql = buildWhere(where || sql``, this.ids)
+  async has(where?: Where<T>, log?: (log: Log) => void): Promise<boolean> {
+    const whereSql = buildWhere<T>(where || sql``, this.ids)
     // let defaultLog = (log: Log) => log.with({ where: sqlToString(whereSql) }).info("contains '{where}'")
     ;(log || defaultWhereLog(whereSql, "has"))(this.log)
 

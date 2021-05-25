@@ -129,7 +129,8 @@ test("sqlParams", () => {
 
 
 // buildWhere --------------------------------------------------------------------------------------
-export function buildWhere<W>(where: W, ids: string[]): SQL {
+export type Where<T> = Partial<T> | SQL | number | string | boolean
+export function buildWhere<T>(where: Where<T>, ids: string[]): SQL {
   if (isSql(where)) {
     return where
   } else if (typeof where == "object") {
@@ -153,14 +154,15 @@ function sqlValueToString(v: SQLValue): string {
 }
 
 test("buildQuery", () => {
-  assert.equal(buildWhere(sql`id = ${1}`, []), sql`id = ${1}`)
+  interface User { id: number, name: string }
+  assert.equal(buildWhere<User>(sql`id = ${1}`, []), sql`id = ${1}`)
 
-  assert.equal(buildWhere({ id: 1 }, []), sql`id = ${1}`)
+  assert.equal(buildWhere<User>({ id: 1 }, []), sql`id = ${1}`)
 
-  assert.equal(buildWhere(1, []), sql`id = ${1}`)
+  assert.equal(buildWhere<User>(1, []), sql`id = ${1}`)
 
-  assert.equal(buildWhere({ name: "Jim", id: 1 }, []),     sql`id = ${1} and name = ${"Jim"}`)
-  assert.equal(buildWhere({ name: "Jim", id: 1 }, ["id"]), sql`id = ${1}`)
+  assert.equal(buildWhere<User>({ name: "Jim", id: 1 }, []),     sql`id = ${1} and name = ${"Jim"}`)
+  assert.equal(buildWhere<User>({ name: "Jim", id: 1 }, ["id"]), sql`id = ${1}`)
 })
 
 
