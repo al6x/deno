@@ -72,6 +72,15 @@ export class Log {
     console.error(red("E " + formatted))
   }
 
+  logfn(log: LogFn): void {
+    if (log == undefined) return
+    if (typeof log == "string") {
+      this.info(log)
+    } else {
+      log(this)
+    }
+  }
+
   private formatComponent(): string {
     const maxLen = 4;
     return take(this.component, maxLen).toLowerCase().padStart(maxLen, " ") + " | "
@@ -106,6 +115,10 @@ export class Log {
     })
   }
 }
+
+
+// LogFn --------------------------------------------------------------------------------------------
+export type LogFn = ((log: Log) => void) | string | undefined
 
 
 // Shortcuts ----------------------------------------------------------------------------------------

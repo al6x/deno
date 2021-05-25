@@ -27,7 +27,7 @@ export class Db {
   private readonly log:   Log
   public  readonly url:   PgUrl
 
-  private readonly beforecallbacks: SQL[] = []
+  private readonly beforecallbacks: [SQL, LogFn][] = []
 
   constructor(
     public readonly id:                  string,
@@ -66,10 +66,10 @@ export class Db {
     try { await pool?.end() } catch {}
   }
 
-  before(sql: SQL, prepend = false) {
+  before(sql: SQL, log?: LogFn, prepend = false) {
     if (this.prepared) throw new Error("too late, before callbacks already applied")
-    if (prepend) this.beforecallbacks.unshift(sql)
-    else         this.beforecallbacks.push(sql)
+    if (prepend) this.beforecallbacks.unshift([sql, log])
+    else         this.beforecallbacks.push([sql, log])
   }
 
   private async prepareSequential() {
@@ -96,7 +96,8 @@ export class Db {
       this.log.info("applying before callbacks")
       try {
         const conn = await pool.connect()
-        for (const sql of this.beforecallbacks) {
+        for (const [sql, logfn] of this.beforecallbacks) {
+          this.log.logfn(logfn)
           await conn.queryObject(sql.sql, ...encode(sql.values))
         }
         // this.log.info("before callbacks applied")
@@ -149,17 +150,17 @@ export class Db {
     return (log: Log) => { log.with({ sql: sqlToString(sql) }).info(`${message} '{sql}'`) }
   }
 
-async exec(sql: SQL, log?: (log: Log) => void): Promise<void> {
+async exec(sql: SQL, log?: LogFn): Promise<void> {
   await this.withConnection(async (conn) => {
-    (log || this.defaultLog(sql, "exec"))(this.log)
+    this.log.logfn(log || this.defaultLog(sql, "exec"))
     await conn.queryObject(sql.sql, ...encode(sql.values))
     return "nothing"
   })
 }
 
-  async filter<T>(sql: SQL, log?: (log: Log) => void): Promise<T[]> {
+  async filter<T>(sql: SQL, log?: LogFn): Promise<T[]> {
     const { rows } = await this.withConnection((conn) => {
-      (log || this.defaultLog(sql, "get"))(this.log)
+      this.log.logfn(log || this.defaultLog(sql, "get"))
       const r = conn.queryObject(sql.sql, ...encode(sql.values))
       // r.then(p)
       return r
@@ -167,20 +168,20 @@ async exec(sql: SQL, log?: (log: Log) => void): Promise<void> {
     return rows.map(decode) as T[]
   }
 
-  async fget<T>(sql: SQL, log?: (log: Log) => void): Promise<T | undefined> {
+  async fget<T>(sql: SQL, log?: LogFn): Promise<T | undefined> {
     const rows = await this.filter<T>(sql, log || this.defaultLog(sql, "get"))
     if (rows.length > 1) throw new Error(`expected single result but got ${rows.length} rows`)
     if (rows.length < 1) return undefined
     return rows[0]
   }
 
-  async get<T>(sql: SQL, log?: (log: Log) => void): Promise<T> {
+  async get<T>(sql: SQL, log?: LogFn): Promise<T> {
     let r = await this.fget<T>(sql, log)
     if (r == undefined) throw new Error(`expected single row but got none`)
     return r
   }
 
-  async fgetValue<T extends DbValue>(sql: SQL, log?: (log: Log) => void): Promise<T | undefined> {
+  async fgetValue<T extends DbValue>(sql: SQL, log?: LogFn): Promise<T | undefined> {
     let row = await this.fget<object>(sql, log)
     if (row == undefined) return undefined
 
@@ -190,7 +191,7 @@ async exec(sql: SQL, log?: (log: Log) => void): Promise<void> {
     return (row as something)[allKeys[0]]
   }
 
-  async getValue<T extends DbValue>(sql: SQL, log?: (log: Log) => void): Promise<T> {
+  async getValue<T extends DbValue>(sql: SQL, log?: LogFn): Promise<T> {
     let row = await this.get<object>(sql, log)
 
     const allKeys = Object.keys(row)
@@ -210,6 +211,9 @@ async exec(sql: SQL, log?: (log: Log) => void): Promise<void> {
     }, this.poolSize, true)
   }
 }
+
+// Logging -----------------------------------------------------------------------------------------
+export type LogFn = ((log: Log) => void) | string | undefined
 
 
 // Test --------------------------------------------------------------------------------------------

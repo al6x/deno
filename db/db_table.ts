@@ -170,7 +170,7 @@ slowTest("DbTable", async () => {
   // Will connect lazily and reconnected in case of connection error
   const db = new Db("db", "deno_unit_tests")
 
-  // Executing schema befor any other DB query, will be executed lazily before the first use
+  // Before will be executed lazily, before the first query
   db.before(sql`
     drop table if exists users;
 
@@ -181,7 +181,7 @@ slowTest("DbTable", async () => {
 
       primary key (id)
     );
-  `)
+  `, "creating schema")
 
   // Defining User Model
   interface User {
@@ -194,12 +194,15 @@ slowTest("DbTable", async () => {
 
   // Saving
   var jim: User = { id: 1, name: "Jim", age: 30 }
-  await users.create(jim)
+  await users.create(jim) // jim.id going to be updated by database
 
   await users.save(jim)
 
   jim.age = 31
   await users.save(jim)
+
+  // refresh
+  assert.equal(await users.get(jim), jim)
 
   // filter
   assert.equal(await users.filter(sql`age = ${31}`), [jim])
