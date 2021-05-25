@@ -80,8 +80,15 @@ catch { testEnabledS = "false" }
 let slowTestEnabled = testEnabledS == "slow"
 let testEnabled = slowTestEnabled || (testEnabledS == "true")
 
-export function test(name: string, test: (() => void) | (() => Promise<void>), isSlow = false) {
-  if ((testEnabled && !isSlow) || slowTestEnabled || name.toLowerCase() == testEnabledS) {
+export function test(name: string, test: (() => void) | (() => Promise<void>)) {
+  if (testEnabled || name.toLowerCase() == testEnabledS) {
+    tests.push({ name, test })
+    runTests()
+  }
+}
+
+export function slowTest(name: string, test: (() => void) | (() => Promise<void>)) {
+  if (slowTestEnabled || name.toLowerCase() == testEnabledS) {
     tests.push({ name, test })
     runTests()
   }

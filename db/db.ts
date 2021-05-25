@@ -1,4 +1,4 @@
-import { p, something, assert, keys, test } from "base/base.ts"
+import { p, something, assert, keys, slowTest } from "base/base.ts"
 import { Log } from "base/log.ts"
 import { PgUrl, parsePgUrl, decode, encode } from "./utils.ts"
 import { sql, SQL, sqlToString } from "./sql.ts"
@@ -149,13 +149,13 @@ export class Db {
     return (log: Log) => { log.with({ sql: sqlToString(sql) }).info(`${message} '{sql}'`) }
   }
 
-  async exec(sql: SQL, log?: (log: Log) => void): Promise<void> {
-    await this.withConnection(async (conn) => {
-      (log || this.defaultLog(sql, "exec"))(this.log)
-      await conn.queryObject(sql.sql, ...encode(sql.values))
-      return "nothing"
-    })
-  }
+async exec(sql: SQL, log?: (log: Log) => void): Promise<void> {
+  await this.withConnection(async (conn) => {
+    (log || this.defaultLog(sql, "exec"))(this.log)
+    await conn.queryObject(sql.sql, ...encode(sql.values))
+    return "nothing"
+  })
+}
 
   async filter<T>(sql: SQL, log?: (log: Log) => void): Promise<T[]> {
     const { rows } = await this.withConnection((conn) => {
@@ -214,7 +214,7 @@ export class Db {
 
 // Test --------------------------------------------------------------------------------------------
 // test=Db deno run --import-map=import_map.json --unstable --allow-all db/db.ts
-test("Db", async () => {
+slowTest("Db", async () => {
   // Will be connected lazily and reconnect in case of connection error
   const db = new Db("db", "deno_unit_tests")
 
@@ -262,4 +262,4 @@ test("Db", async () => {
   }
 
   await db.close()
-}, true)
+})

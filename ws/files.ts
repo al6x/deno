@@ -1,4 +1,4 @@
-import { p, last, assert, test } from "base/base.ts"
+import { p, last, assert, slowTest } from "base/base.ts"
 import { Log } from "base/log.ts"
 import * as crypto from "base/crypto.ts"
 import * as fs from "base/fs.ts"
@@ -110,7 +110,7 @@ const create_files_schema = `
 
 // Test --------------------------------------------------------------------------------------------
 // test=Files deno run --import-map=import_map.json --unstable --allow-all ws/files.ts
-test("Files", async () => {
+slowTest("Files", async () => {
   const db = new Db("default", "deno_unit_tests")
   // await db.exec(create_files_schema, (log) => log.info("creating files schema"))
 
@@ -137,4 +137,4 @@ test("Files", async () => {
   assert.equal((await files.getFiles("alex", "plot")).map((f) => f.path), ["/index.html"])
 
   await db.close()
-}, true)
+})
