@@ -5,7 +5,9 @@ import { isProd, isDev } from "base/env.ts"
 import * as crypto from "base/crypto.ts"
 import { say } from "base/bash.ts"
 import { setPermanentCookie, setSessionCookie } from "./helpers.ts"
+import { assetFilePath } from "./util.ts"
 import { Application, Middleware, Context, HttpError } from "https://deno.land/x/oak/mod.ts"
+import * as stdpath from "https://deno.land/std/path/mod.ts"
 
 export { HttpError }
 
@@ -22,7 +24,7 @@ interface ServerConfig {
   readonly host:            string
   readonly domain:          string // Used for cookie user_token
   readonly port:            number
-  readonly catchErrors:     boolean
+  // readonly catchErrors:     boolean
   readonly showErrors:      boolean
   readonly assetsPath:      string
   readonly assetsFilePaths: string[]
@@ -35,10 +37,10 @@ function defaultConfig(): ServerConfig { return {
   host:            "localhost",
   domain:          "unknown",
   port:            8080,
-  catchErrors:     isProd(),
+  // catchErrors:     isProd(),
   showErrors:      !isProd(),
   assetsPath:      "/assets",
-  assetsFilePaths: [],
+  assetsFilePaths: [stdpath.join(Deno.cwd(), "/assets")],
   cacheAssets:     isProd(),
   maxFileSize:     10_000_000, // 10 Mb
   voice:           isDev()
@@ -59,6 +61,7 @@ export class HttpServer {
     })
 
     this.oak.use(this.buildBaseMiddleware())
+    this.oak.use(this.buildAssetMiddleware())
   }
 
   // Logging and error handling
@@ -106,7 +109,7 @@ export class HttpServer {
           ctx.response.body = `<!DOCTYPE html>
             <html>
               <body>
-                500 - Internal Server Error
+                500 - ${this.config.showErrors ? e.message : "Internal Server Error"}
               </body>
             </html>`
         }
@@ -141,13 +144,18 @@ export class HttpServer {
     }
   }
 
-  // buildAssetMiddleware(): HttpServerMiddleware {
-  //   return async (ctx) => {
-  //     await ctx.send({
-  //       root: Deno.cwd(), immutable: true
-  //     })
-  //   }
-  // }
+  buildAssetMiddleware(): HttpServerMiddleware {
+    return async (ctx, next) => {
+      let found = await assetFilePath(ctx.request.url.pathname, this.config.assetsFilePaths)
+      if (found.found) {
+        await ctx.send({
+          path: found.value, root: stdpath.dirname(found.value), immutable: true
+        })
+      } else {
+        await next()
+      }
+    }
+  }
 
   start(): Promise<void> {
     return this.oak.listen({ port: this.config.port, hostname: "127.0.0.1" })
@@ -156,7 +164,7 @@ export class HttpServer {
 
 // Test --------------------------------------------------------------------------------------------
 if (import.meta.main) {
-  const server = new HttpServer()
+  const server = new HttpServer({ assetsFilePaths: ["."]})
 
   server.oak.use((ctx) => {
     ctx.response.body = "Hello world!"

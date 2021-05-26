@@ -36,7 +36,7 @@ export class Log {
   with(data: { [key: string]: unknown }): Log
   with(data: { [key: string]: unknown } | Error | string | number): Log {
     if (data instanceof Error) {
-      return this.with({ exception: data.message || "unknown error", trace: data.stack || "" })
+      return this.with({ exception: data.message || "unknown error", stack: data.stack || "" })
     } else if (typeof data == "string" || typeof data == "number") {
       return new Log(this.component, [...this.ids, "" + data], { ...this.data })
     } else {
@@ -117,10 +117,10 @@ function defaultLogMethod(log: Log): void {
   }
 
   // Printing exception and stack if exist
-  if ("exception" in log.data) {
-    let exception = "" + (log.data["exception"] || "can't get exception")
-    console.error("\n" + red(exception))
-  }
+  // if ("exception" in log.data) {
+  //   let exception = "" + (log.data["exception"] || "can't get exception")
+  //   console.error("\n" + red(exception))
+  // }
   if ("stack" in log.data) {
     let stack = "" + (log.data["stack"] || "can't get stack")
     console.error("\n" + stack)

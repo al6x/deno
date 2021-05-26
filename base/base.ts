@@ -1,8 +1,6 @@
-// import { Log } from "./log.ts"
-// import { getEnv } from "./env.ts"
+import { getEnv } from "./env.ts"
 
 export * from './map.ts'
-// export * from './env.ts'
 
 // Safe any ----------------------------------------------------------------------------------------
 export type something = any
@@ -17,22 +15,6 @@ export const kb = 1024, mb = 1024 * kb
 export const sec = 1000, min = 60 * sec, hour = 60 * min, day = 24 * hour
 export const million = 1000000, billion = 1000 * million
 
-// environment -------------------------------------------------------------------------------------
-// export type Environment = 'development' | 'production' | 'test'
-// let cachedEnvironment: Environment | undefined = undefined
-// export function getEnvironment(): Environment {
-//   if (cachedEnvironment == undefined) {
-//     if (isBrowser()) {
-//       cachedEnvironment = "development" as Environment
-//     } else {
-//       const environment = deno.env.get('environment') || 'development'
-//       if (!['development', 'production', 'test'].includes(environment))
-//         throw new Error(`invalid environment '${environment}'`)
-//       cachedEnvironment = environment as Environment
-//     }
-//   }
-//   return cachedEnvironment
-// }
 
 // isBrowser --------------------------------------------------------------------------------------
 export function isBrowser() { return deno == undefined }
@@ -78,7 +60,7 @@ function runTests () {
 }
 
 let testEnabledS: string
-try   { testEnabledS = (Deno.env.get("test") || "").toLowerCase() }
+try   { testEnabledS = (getEnv("test") || "").toLowerCase() }
 catch { testEnabledS = "false" }
 let slowTestEnabled = testEnabledS == "slow"
 let testEnabled = slowTestEnabled || (testEnabledS == "true")
