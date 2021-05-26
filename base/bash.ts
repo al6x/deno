@@ -28,3 +28,7 @@ export async function run(
   process.close()
   return { code, output, stderr }
 }
+
+export async function say(text: string) {
+  await run(["say", text])
+}

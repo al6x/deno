@@ -1,9 +1,12 @@
-import { Log } from "./log.ts"
+// import { Log } from "./log.ts"
+// import { getEnv } from "./env.ts"
 
 export * from './map.ts'
+// export * from './env.ts'
 
 // Safe any ----------------------------------------------------------------------------------------
 export type something = any
+export type some = any
 let deno = 'Deno' in window ? (window as something).Deno : undefined
 
 // Global variables for browser and node -----------------------------------------------------------
@@ -15,21 +18,21 @@ export const sec = 1000, min = 60 * sec, hour = 60 * min, day = 24 * hour
 export const million = 1000000, billion = 1000 * million
 
 // environment -------------------------------------------------------------------------------------
-export type Environment = 'development' | 'production' | 'test'
-let cachedEnvironment: Environment | undefined = undefined
-export function getEnvironment(): Environment {
-  if (cachedEnvironment == undefined) {
-    if (isBrowser()) {
-      cachedEnvironment = "development" as Environment
-    } else {
-      const environment = deno.env.get('environment') || 'development'
-      if (!['development', 'production', 'test'].includes(environment))
-        throw new Error(`invalid environment '${environment}'`)
-      cachedEnvironment = environment as Environment
-    }
-  }
-  return cachedEnvironment
-}
+// export type Environment = 'development' | 'production' | 'test'
+// let cachedEnvironment: Environment | undefined = undefined
+// export function getEnvironment(): Environment {
+//   if (cachedEnvironment == undefined) {
+//     if (isBrowser()) {
+//       cachedEnvironment = "development" as Environment
+//     } else {
+//       const environment = deno.env.get('environment') || 'development'
+//       if (!['development', 'production', 'test'].includes(environment))
+//         throw new Error(`invalid environment '${environment}'`)
+//       cachedEnvironment = environment as Environment
+//     }
+//   }
+//   return cachedEnvironment
+// }
 
 // isBrowser --------------------------------------------------------------------------------------
 export function isBrowser() { return deno == undefined }
@@ -55,21 +58,21 @@ let lastRunnedTest = 0, testingInProgress = false
 function runTests () {
   if (testingInProgress) return
   testingInProgress = true
-  let log = new Log("Test")
   setTimeout(async () => {
     while (lastRunnedTest < tests.length) {
       let { name, test } = tests[lastRunnedTest]
       lastRunnedTest += 1
       try {
-        log.with({ name: name }).info("checking '{name}'")
+        console.log(`  test | ${name}`)
         let promise = test()
         if (promise) await promise
       } catch (e) {
-        log.with(e).with({ name }).error(`test '{name}' failed`)
+        console.error(`  test | ${name} failed`)
+        console.error(e)
         throw e
       }
     }
-    log.info("success")
+    console.log(`  test | success`)
     testingInProgress = false
   }, 0)
 }
@@ -297,9 +300,14 @@ test("deepMap", () => {
 
 
 // Timer -------------------------------------------------------------------------------------------
-export function timer(): () => number {
+export function timerMs(): () => number {
   const start = Date.now()
   return function(){ return Date.now() - start }
+}
+
+export function timerSec(): () => number {
+  const start = Date.now()
+  return function(){ return Math.round((Date.now() - start) / 1000) }
 }
 
 // cleanStack -------------------------------------------------------------------------------------

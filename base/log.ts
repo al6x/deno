@@ -1,23 +1,13 @@
-import { p, take, something } from "./base.ts"
+import { p, take, some, isEmpty, toJson } from "./base.ts"
+import { getEnv } from "./env.ts"
 import { red, yellow, gray as grey } from "https://deno.land/std/fmt/colors.ts"
-// import { grey, yellow, red } from "./terminal.ts"
 
-
-// LogConfig ---------------------------------------------------------------------------------------
-let env: {[key: string]: string | undefined} = {}
-try {
-  for (let key of ["log", "disable_logs", "log_as_debug", "log_data"]) {
-    env[key] = Deno.env.get(key)
-  }
-} catch(e) {
-  // Ignoring if there's no `
-}
 
 export const logConfig = {
-  log:         env["log"] != "false",
-  disableLogs: new Set((env["disable_logs"] || "").split(",")),
-  logAsDebug:  new Set((env["log_as_debug"] || "").split(",")),
-  logData:     env["log_data"] == "true"
+  log:         getEnv("log") != "false",
+  disableLogs: new Set(getEnv("disable_logs", "").split(",")),
+  logAsDebug:  new Set(getEnv("log_as_debug", "").split(",")),
+  logData:     getEnv("log_data") == "true"
 }
 
 function isEnabled(component: string, level: string): boolean {
@@ -33,87 +23,133 @@ function isDebug(component: string): boolean {
 
 // Log ----------------------------------------------------------------------------------------------
 export class Log {
+  static logMethod = (log: Log) => defaultLogMethod(log) // Could be overrided
+
   constructor(
     public readonly component: string,
-    public readonly id:        string | undefined = undefined,
-    public readonly data:      object | undefined = undefined
+    public readonly ids:       string[] = [],
+    public readonly data:      { [key: string]: unknown } = {}
   ) {}
 
-  with(data: object): Log {
+  with(id: string | number): Log
+  with(data: Error): Log
+  with(data: { [key: string]: unknown }): Log
+  with(data: { [key: string]: unknown } | Error | string | number): Log {
     if (data instanceof Error) {
-      return this.with({ message: data.message || "unknown error", trace: data.stack || "" })
+      return this.with({ exception: data.message || "unknown error", trace: data.stack || "" })
+    } else if (typeof data == "string" || typeof data == "number") {
+      return new Log(this.component, [...this.ids, "" + data], { ...this.data })
     } else {
-      return new Log(this.component, this.id, { ...(this.data || {}), ...data })
+      let log = new Log(this.component, [...this.ids], { ...this.data })
+      let sdata = data as some
+      for (const k in sdata) {
+        let v = sdata[k]
+        if (k == "id")       log.ids.push("" + v)
+        else if (k == "ids") log.ids.push(...(Array.isArray(v) ? v.map((id) => "" + id) : ["" + v]))
+        else                 (log.data as some)[k] = v
+      }
+      return log
     }
   }
 
+  message(msg: { [key: string]: unknown }): void {
+    defaultLogMethod(this.with(msg))
+  }
+
   debug(message: string): void {
-    if (!isEnabled(this.component, "debug")) return
-    const formatted = this.formatComponent() + this.formatId() + this.formatMessage(message) + this.formatData()
-    console.log("  " + grey(formatted))
+    this.message({ debug: message })
   }
 
   info(message: string): void {
-    if (!isEnabled(this.component, "info")) return
-    const formatted = this.formatComponent() + this.formatId() + this.formatMessage(message) + this.formatData()
-    if (isDebug(this.component)) console.log("  " + grey(formatted))
-    else                         console.log("  " + formatted)
+    this.message({ info: message })
   }
 
   warn(message: string): void {
-    if (!isEnabled(this.component, "warn")) return
-    const formatted = this.formatComponent() + this.formatId() + this.formatMessage(message) + this.formatData()
-    console.log(yellow("W " + formatted))
+    this.message({ warn: message })
   }
 
-  error(message: string): void {
-    if (!isEnabled(this.component, "warn")) return
-    const formatted = this.formatComponent() + this.formatId() + this.formatMessage(message) + this.formatData()
-    console.error(red("E " + formatted))
+  error(message: string | Error): void {
+    if (message instanceof Error) this.with(message).message({ error: message.message || "unknown error" })
+    else                          this.message({ error: message })
   }
 
   logfn(log: LogFn): void {
     if (log == undefined) return
-    if (typeof log == "string") {
-      this.info(log)
-    } else {
-      log(this)
+    typeof log == "string" ? this.info(log) : log(this)
+  }
+}
+
+
+function defaultLogMethod(log: Log): void {
+  // Detecting level and message
+  let level = ""; let msg = ""
+  for (const l of ["debug", "info", "warn", "error"]) {
+    if (l in log.data) {
+      level = l; msg = "" + (log.data[l] || "invalid log message type")
+      break
     }
   }
-
-  private formatComponent(): string {
-    const maxLen = 4;
-    return take(this.component, maxLen).toLowerCase().padStart(maxLen, " ") + " | "
+  if (level == "") {
+    defaultLogMethod(log.with({ warn: "invalid log message, no level" }))
+    return
   }
 
-  private formatId(): string {
-    if (this.id == undefined) return ""
-    const maxLen = 7
-    return take(this.id, maxLen).toLowerCase().padEnd(maxLen, " ") + " "
+  // Checking config
+  if (!isEnabled(log.component, level)) return
+
+  // Formatting message
+  let line =
+    formatComponent(log.component) +
+    formatIds(log.ids) +
+    formatMessage(msg, log.data) +
+    formatData(log.data)
+
+  // Formatting level
+  if        (level == "debug") {
+    console.log("  " + grey(line))
+  } else if (level == "info") {
+    let asGrey = isDebug(log.component)
+    console.log("  " + (asGrey ? grey(line) : line))
+  } else if (level == "warn") {
+    console.log(yellow("W " + line))
+  } else if (level == "error") {
+    console.error(red("E " + line))
   }
 
-  private formatData(): string {
-    if (!logConfig.logData) return ""
-    if (this.data == undefined) {
-      return " | {}"
-    } else {
-      return " | " + JSON.stringify(this.data)
-    }
+  // Printing exception and stack if exist
+  if ("exception" in log.data) {
+    let exception = "" + (log.data["exception"] || "can't get exception")
+    console.error("\n" + red(exception))
   }
+  if ("stack" in log.data) {
+    let stack = "" + (log.data["stack"] || "can't get stack")
+    console.error("\n" + stack)
+  }
+}
 
-  private formatMessage(message: string): string {
-    const keyre = /(\{[a-zA-Z0-9_]+\})/g
-    return message.replace(keyre, (_match, skey) => {
-      let value: string
-      if (this.data == undefined) {
-        value = skey
-      } else {
-        const key = skey.substring(1, skey.length - 1)
-        value = (this.data as something)[key] || key
-      }
-      return ("" + value).replace(/\n/g, " ")
-    })
-  }
+function formatComponent(component: string): string {
+  const maxLen = 4
+  return take(component, maxLen).toLowerCase().padStart(maxLen, " ") + " | "
+}
+
+function formatIds(ids: string[]): string {
+  const maxLen = 7
+  return ids.map((id) => take(id, maxLen).toLowerCase().padEnd(maxLen, " ") + " ").join(", ")
+}
+
+function formatData(data: { [key: string]: unknown }): string {
+  if (!logConfig.logData) return ""
+  return isEmpty(data) ? "" : " | " + toJson(data)
+}
+
+function formatMessage(message: string, data: { [key: string]: unknown }): string {
+  const keyre = /(\{[a-zA-Z0-9_]+\})/g
+  return message.replace(keyre, (_match, skey) => {
+    let value: string
+    const key = skey.substring(1, skey.length - 1)
+    value = key in data ? data[key] : key
+    return ("" + value).replace(/\n/g, " ")
+  })
 }
 
 

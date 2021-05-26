@@ -1,0 +1,52 @@
+import * as stdpath from "https://deno.land/std/path/mod.ts"
+import { p, test, assert, take } from "base/base.ts"
+import { Context } from "https://deno.land/x/oak/mod.ts"
+import { assetHash } from "./util.ts"
+
+
+// escapeJs ----------------------------------------------------------------------------------------
+export function escapeJs(js: unknown): string {
+  if (js === undefined || js === null) return ""
+  return JSON.stringify(js).replace(/^"|"$/g, "")
+}
+test("escapeJs", () => {
+  assert.equal(escapeJs('); alert("hi there'), "); alert(\\\"hi there")
+})
+
+
+// escapeHtml --------------------------------------------------------------------------------------
+const ESCAPE_HTML_MAP: { [key: string]: string } = {
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;'
+}
+export function escapeHtml(html: unknown): string {
+  if (html === undefined || html === null) return ''
+  return ('' + html).replace(/[&<>'"]/g, function(c) { return ESCAPE_HTML_MAP[c] })
+}
+test("escapeHtml", () => {
+  assert.equal(escapeHtml('<div>'), '&lt;div&gt;')
+})
+
+
+// assetPath ---------------------------------------------------------------------------------------
+export async function assetPath(
+  path: string, assetsPath: string, assetsFilePaths: string[], cache = true
+): Promise<string> {
+  if (!path.startsWith("/")) throw new Error(`Path should start with /, ${path}`)
+  if (path.includes("..")) throw new Error(`Invalid path, ${path}`)
+  const hash = cache ? await assetHash(path, assetsFilePaths) : Date.now()
+  return `${assetsPath}${path}?hash=${hash}`
+}
+
+
+// setPermanentCookie ------------------------------------------------------------------------------
+export async function setPermanentCookie(ctx: Context, k: string, v: string, domain: string) {
+  ctx.cookies.set(k, v, { domain: "." + domain, expires: new Date(253402300000000), path: "/" })
+}
+
+export async function setSessionCookie(ctx: Context, k: string, v: string) {
+  ctx.cookies.set(k, v, { path: "/" })
+}
