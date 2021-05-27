@@ -54,7 +54,7 @@ function runTests () {
         throw e
       }
     }
-    console.log(`  test | success`)
+    // console.log(`  test | success`)
     testingInProgress = false
   }, 0)
 }

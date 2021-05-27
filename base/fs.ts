@@ -117,7 +117,7 @@ export async function writeJson<T>(path: string, data: T) {
 
 // rename ------------------------------------------------------------------------------------------
 // Creates parent directories automatically for destination
-export async function rename(from: string, to: string, options?: { overwrite?: boolean }) {
+export async function move(from: string, to: string, options?: { overwrite?: boolean }) {
   options = options || {}
   const overwrite = 'overwrite' in options ? options.overwrite : false
   try {

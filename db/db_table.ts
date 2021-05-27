@@ -15,7 +15,7 @@ export class DbTable<T extends object> {
     public readonly ids:  string[],
     public readonly auto_id: boolean
   ) {
-    this.log = new Log(db.id, this.name)
+    this.log = new Log(db.id).with(this.name)
   }
 
   // Could be overrided

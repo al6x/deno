@@ -16,8 +16,8 @@ export class Files {
     public readonly max_object_b:   number = 2_000_000,
     public readonly max_per_user_b: number = 10_000_000
   ) {
-    this.log = new Log("Files", last(path.split("/")))
-    db.before(sql(create_files_schema))
+    this.log = new Log("Files")
+    db.before(sql(create_files_schema), "apply files schema")
     this.db_files = db.table("files", ["user_id", "project_id", "path"], false)
   }
 
@@ -39,18 +39,40 @@ export class Files {
     return fs.exists(this.filePath(user_id, project_id, path))
   }
 
-  async setFile(user_id: string, project_id: string, path: string, hash: string, data: Uint8Array) {
+  async moveFile(user_id: string, project_id: string, path: string, fromPath: string): Promise<FileInfo> {
     this.log
-      .with({ user_id, project_id, path, hash })
+      .with({ user_id, project_id, path })
       .info("save_file {user_id}.{project_id} {path}")
-    const vhash = crypto.hash(data, 'sha256')
-    if (hash != vhash) throw new Error(`hash is wrong, should be base58 hash '${vhash}'`)
+    const hash = await crypto.fileHash(fromPath, "sha256")
+
+    const fstats = await Deno.stat("/home/test/data.json")
+    if (!fstats.isFile) throw new Error("internal error, file expected")
+    const size_b = fstats.size
+    if (size_b > this.max_object_b) throw Error(`file is too big ${size_b}b, max allowed ${this.max_object_b}`)
+
+    const fpath = this.filePath(user_id, project_id, path)
+    await fs.move(fromPath, fpath)
+
+    const file: File = { user_id, project_id, path, hash, size_b }
+    await this.db_files.save(file)
+    return { path: file.path, hash: file.hash, size_b: file.size_b }
+  }
+
+  async setFile(user_id: string, project_id: string, path: string, data: Uint8Array): Promise<FileInfo> {
+    this.log
+      .with({ user_id, project_id, path })
+      .info("save_file {user_id}.{project_id} {path}")
+    const hash = crypto.hash(data, 'sha256')
+
+    let size_b = data.length
+    if (size_b > this.max_object_b) throw Error(`file is too big ${size_b}b, max allowed ${this.max_object_b}`)
 
     const fpath = this.filePath(user_id, project_id, path)
     await fs.writeFile(fpath, data)
 
-    const file: File = { user_id, project_id, path, hash, size_b: data.length }
+    const file: File = { user_id, project_id, path, hash, size_b }
     await this.db_files.save(file)
+    return { path: file.path, hash: file.hash, size_b: file.size_b }
   }
 
   async delFile(user_id: string, project_id: string, path: string) {
@@ -83,6 +105,12 @@ function fsPath(user_id: string, project_id: string, path: string): string {
 
 
 // File --------------------------------------------------------------------------------------------
+interface FileInfo {
+  path:   string
+  hash:   string
+  size_b: number
+}
+
 interface File {
   user_id:    string
   project_id: string
@@ -111,15 +139,14 @@ const create_files_schema = `
 // Test --------------------------------------------------------------------------------------------
 // test=Files deno run --import-map=import_map.json --unstable --allow-all ws/files.ts
 slowTest("Files", async () => {
-  const db = new Db("default", "deno_unit_tests")
-  // await db.exec(create_files_schema, (log) => log.info("creating files schema"))
+  const db = new Db("db", "deno_unit_tests")
 
   const files = new Files("./tmp/files_test", db)
 
   function tou8a(s: string) { return new TextEncoder().encode(s) }
 
-  await files.setFile("alex", "plot", "/index.html", crypto.hash("some html", 'sha256'), tou8a("some html"))
-  await files.setFile("alex", "plot", "/scripts/script.js", crypto.hash("some js", 'sha256'), tou8a("some js"))
+  await files.setFile("alex", "plot", "/index.html", tou8a("some html"))
+  await files.setFile("alex", "plot", "/scripts/script.js", tou8a("some js"))
 
   assert.equal(await files.getFile("alex", "plot", "/index.html"), tou8a("some html"))
   assert.equal(await files.getFile("alex", "plot", "/scripts/script.js"), tou8a("some js"))

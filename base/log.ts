@@ -26,10 +26,15 @@ export class Log {
   static logMethod = (log: Log) => defaultLogMethod(log) // Could be overrided
 
   constructor(
-    public readonly component: string,
-    public readonly ids:       string[] = [],
-    public readonly data:      { [key: string]: unknown } = {}
+    public readonly component:  string,
+    public readonly ids:        string[] = [],
+    public readonly data:       { [key: string]: unknown } = {},
+    public readonly isSilenced: boolean = false
   ) {}
+
+  silence(): Log {
+    return new Log(this.component, [...this.ids], { ...this.data }, true)
+  }
 
   with(id: string | number): Log
   with(data: Error): Log
@@ -38,9 +43,9 @@ export class Log {
     if (data instanceof Error) {
       return this.with({ exception: data.message || "unknown error", stack: data.stack || "" })
     } else if (typeof data == "string" || typeof data == "number") {
-      return new Log(this.component, [...this.ids, "" + data], { ...this.data })
+      return new Log(this.component, [...this.ids, "" + data], { ...this.data }, this.isSilenced)
     } else {
-      let log = new Log(this.component, [...this.ids], { ...this.data })
+      let log = new Log(this.component, [...this.ids], { ...this.data }, this.isSilenced)
       let sdata = data as some
       for (const k in sdata) {
         let v = sdata[k]
@@ -95,7 +100,7 @@ function defaultLogMethod(log: Log): void {
   }
 
   // Checking config
-  if (!isEnabled(log.component, level)) return
+  if (!isEnabled(log.component, level) || log.isSilenced) return
 
   // Formatting message
   let line =
