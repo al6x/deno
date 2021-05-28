@@ -239,7 +239,7 @@ export function isNumber(n: number | undefined | null): n is number {
 export interface Assert {
   (condition: boolean, message?: string | (() => string)): void
   warn(condition: boolean, message?: string): void
-  equal(a: unknown, b: unknown, message?: string | (() => string)): void
+  equal<T>(a: T, b: T, message?: string | (() => string)): void
   approxEqual(a: number, b: number, message?: string | (() => string), deltaRelative?: number): void
 }
 export const assert = <Assert>function(condition, message): void {

@@ -47,7 +47,7 @@ export class Files {
       .info("save_file {user_id}.{project_id} {path}")
     const hash = await crypto.fileHash(fromPath, "sha256")
 
-    const fstats = await Deno.stat("/home/test/data.json")
+    const fstats = await Deno.stat(fromPath)
     if (!fstats.isFile) throw new Error("internal error, file expected")
     const size_b = fstats.size
     if (size_b > this.maxFileB) throw Error(`file is too big ${size_b}b, max allowed ${this.maxFileB}`)
@@ -95,6 +95,7 @@ export class Files {
     return this.db_files.filter({ user_id, project_id })
   }
 
+  protected tmpDirCreated = false
   buildUploadHandler(): (user_id: string, project_id: string, ctx: Context) => Promise<void> {
     const uploadOptions: FormDataReadOptions = {
       // The size of the buffer to read from the request body at a single time
@@ -103,6 +104,11 @@ export class Files {
       outPath:     this.tmpDir      // Path to store temporary files, Deno.makeTempDir()
     }
     return async (user_id, project_id, ctx) => {
+      if (!this.tmpDirCreated) {
+        await fs.createDirectory(this.tmpDir)
+        this.tmpDirCreated = true
+      }
+
       const body = await ctx.request.body({ type: 'form-data'})
       const data = await body.value.read(uploadOptions)
       const files: FileInfo[] = []

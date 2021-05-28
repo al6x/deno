@@ -30,9 +30,7 @@ interface ServerConfig {
 
 function defaultConfig(): ServerConfig { return {
   host:            "localhost",
-  // domain:          "unknown",
   port:            8080,
-  // catchErrors:     isProd(),
   showErrors:      !isProd(),
   assetsPath:      "/assets",
   assetsFilePaths: [stdpath.join(Deno.cwd(), "/assets")],
@@ -128,7 +126,8 @@ export class HttpServer<HttpState> {
         let found = await assetFilePath(ctx.request.url.pathname, this.config.assetsFilePaths)
         if (!found.found) throw new HttpError("Not found")
         await ctx.send({
-          path: found.value, root: stdpath.dirname(found.value), immutable: this.config.cacheAssets
+          // root: stdpath.dirname(found.value)
+          path: found.value, root: "", immutable: this.config.cacheAssets
         })
       } else {
         await next()

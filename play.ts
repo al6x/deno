@@ -1,5 +1,5 @@
 // deno run --import-map=import_map.json ./play.ts
-import { p } from "base/base.ts"
+import { p, assert } from "base/base.ts"
 
-let regexp = /(.) (.) c/
-p("a b c".match(regexp))
+let id = "al6x"
+p(id.length >= 4 && /^[a-z0-9]+$/.test(id))
