@@ -3,6 +3,7 @@ import { Log } from "base/log.ts"
 import * as crypto from "base/crypto.ts"
 import * as fs from "base/fs.ts"
 import { Db, DbTable, sql } from "db/db_table.ts"
+import { Context, FormDataReadOptions } from "https://deno.land/x/oak/mod.ts"
 
 
 // Files -------------------------------------------------------------------------------------------
@@ -11,10 +12,11 @@ export class Files {
   private readonly db_files: DbTable<File>
 
   constructor(
-    public readonly path:           string,
-    public readonly db:             Db,
-    public readonly max_object_b:   number = 2_000_000,
-    public readonly max_per_user_b: number = 10_000_000
+    public readonly db:          Db,
+    public readonly path:        string,
+    public readonly tmpDir:      string,
+    public readonly maxFileB:    number = 2_097_152,  // 2mb maximum file size,
+    public readonly maxPerUserB: number = 16_777_216  // 16mb maximum files size per user
   ) {
     this.log = new Log("Files")
     db.before(sql(create_files_schema), "apply files schema")
@@ -48,10 +50,10 @@ export class Files {
     const fstats = await Deno.stat("/home/test/data.json")
     if (!fstats.isFile) throw new Error("internal error, file expected")
     const size_b = fstats.size
-    if (size_b > this.max_object_b) throw Error(`file is too big ${size_b}b, max allowed ${this.max_object_b}`)
+    if (size_b > this.maxFileB) throw Error(`file is too big ${size_b}b, max allowed ${this.maxFileB}`)
 
     const fpath = this.filePath(user_id, project_id, path)
-    await fs.move(fromPath, fpath)
+    await fs.move(fromPath, fpath, { overwrite: true })
 
     const file: File = { user_id, project_id, path, hash, size_b }
     await this.db_files.save(file)
@@ -65,7 +67,7 @@ export class Files {
     const hash = crypto.hash(data, 'sha256')
 
     let size_b = data.length
-    if (size_b > this.max_object_b) throw Error(`file is too big ${size_b}b, max allowed ${this.max_object_b}`)
+    if (size_b > this.maxFileB) throw Error(`file is too big ${size_b}b, max allowed ${this.maxFileB}`)
 
     const fpath = this.filePath(user_id, project_id, path)
     await fs.writeFile(fpath, data)
@@ -91,6 +93,25 @@ export class Files {
       .with({ user_id, project_id })
       .info("get_files {user_id}.{project_id}")
     return this.db_files.filter({ user_id, project_id })
+  }
+
+  buildUploadHandler(): (user_id: string, project_id: string, ctx: Context) => Promise<void> {
+    const uploadOptions: FormDataReadOptions = {
+      // The size of the buffer to read from the request body at a single time
+      bufferSize:  262_144,
+      maxFileSize: this.maxFileB,
+      outPath:     this.tmpDir      // Path to store temporary files, Deno.makeTempDir()
+    }
+    return async (user_id, project_id, ctx) => {
+      const body = await ctx.request.body({ type: 'form-data'})
+      const data = await body.value.read(uploadOptions)
+      const files: FileInfo[] = []
+      for (const file of (data.files || [])) {
+        if (!file.filename) throw new Error("no filename")
+        files.push(await this.moveFile(user_id, project_id, file.name, file.filename))
+      }
+      ctx.response.body = files
+    }
   }
 }
 
@@ -139,9 +160,9 @@ const create_files_schema = `
 // Test --------------------------------------------------------------------------------------------
 // test=Files deno run --import-map=import_map.json --unstable --allow-all ws/files.ts
 slowTest("Files", async () => {
-  const db = new Db("db", "deno_unit_tests")
+  const db = new Db("deno_unit_tests")
 
-  const files = new Files("./tmp/files_test", db)
+  const files = new Files(db, "./tmp/files_test/files", "./tmp/files_test/tmp")
 
   function tou8a(s: string) { return new TextEncoder().encode(s) }
 

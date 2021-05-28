@@ -18,9 +18,8 @@ function setInstance(instance: object, arg2?: string | boolean, arg3?: boolean):
 
   let argId      = typeof arg2 == "string" ? arg2 : undefined
   let instanceId = "id" in instance ? (instance as something).id : undefined
-  let id: string | undefined = argId || instanceId
-  if (!id) throw new Error(`can't set instance of ${type} without id`)
   if ((argId || instanceId) != (instanceId || argId)) throw new Error(`${type} instance id doesn't match`)
+  let id: string = argId || instanceId || "default"
 
   let arg2Override = typeof arg2 == "boolean" ? arg2 : false
   let arg3Override = typeof arg3 == "boolean" ? arg3 : false

@@ -23,20 +23,24 @@ export type DbValue = number | string | boolean | Date
 
 // Db ----------------------------------------------------------------------------------------------
 export class Db {
-  private          pool?: Pool
-  private readonly log:   Log
-  public  readonly url:   PgUrl
+  private readonly log:                Log
+  public  readonly url:                PgUrl
+  public  readonly id?:                string
+  public  readonly createDbIfNotExist: boolean
+  public  readonly poolSize:           number
 
+  private          pool?:           Pool
   private readonly beforecallbacks: [SQL, LogFn][] = []
 
   constructor(
-    public readonly id:                  string,
-    public readonly nameOrUrl:           string,
-    public readonly createDbIfNotExist = true,
-    public readonly poolSize           = 10
+    public readonly nameOrUrl: string,
+    public readonly options?:  { id?: string, createDbIfNotExist?: boolean, poolSize?: number }
   ) {
-    this.url = parsePgUrl(nameOrUrl)
-    this.log = new Log(this.id)
+    this.url                = parsePgUrl(nameOrUrl)
+    this.id                 = options?.id
+    this.createDbIfNotExist = options?.createDbIfNotExist != false
+    this.poolSize           = options?.poolSize || 10
+    this.log = new Log(this.id || "db")
   }
 
   table<T extends object>(name: string, ids = ["id"], auto_id = false): DbTable<T> {
@@ -66,7 +70,16 @@ export class Db {
     try { await pool?.end() } catch {}
   }
 
-  before(sql: SQL, log?: LogFn, prepend = false) {
+  before(sql: SQL): void
+  before(sql: SQL, log: LogFn): void
+  before(sql: SQL, prepend: boolean): void
+  before(sql: SQL, log: LogFn, prepend: boolean): void
+  before(sql: SQL, arg2?: LogFn | boolean, arg3?: boolean): void {
+    const log: LogFn       = typeof arg2 == "boolean" ? undefined : arg2
+    const prepend: boolean = typeof arg2 == "boolean" ? arg2 : (
+      typeof arg3 == "boolean" ? arg3 : true
+    )
+
     if (this.prepared) throw new Error("too late, before callbacks already applied")
     if (prepend) this.beforecallbacks.unshift([sql, log])
     else         this.beforecallbacks.push([sql, log])
@@ -220,7 +233,7 @@ export type LogFn = ((log: Log) => void) | string | undefined
 // test=Db deno run --import-map=import_map.json --unstable --allow-all db/db.ts
 slowTest("Db", async () => {
   // Will be connected lazily and reconnect in case of connection error
-  const db = new Db("db", "deno_unit_tests")
+  const db = new Db("deno_unit_tests")
 
   // Executing schema befor any other DB query, will be executed lazily before the first use
   db.before(sql`

@@ -4,10 +4,10 @@ import { red, yellow, gray as grey } from "https://deno.land/std/fmt/colors.ts"
 
 
 export const logConfig = {
-  log:         getEnv("log") != "false",
+  log:         getEnv("log", "true") != "false",
   disableLogs: new Set(getEnv("disable_logs", "").split(",")),
   logAsDebug:  new Set(getEnv("log_as_debug", "").split(",")),
-  logData:     getEnv("log_data") == "true"
+  logData:     getEnv("log_data", "false") == "true"
 }
 
 function isEnabled(component: string, level: string): boolean {

@@ -1,17 +1,19 @@
 const envCache = new Map<string, string | undefined>()
 
-function getEnv(key: string): string | undefined
+function getEnv(key: string): string
 function getEnv(key: string, deflt: string): string
-function getEnv(key: string, deflt?: string): string | undefined {
+function getEnv(key: string, deflt?: string): string {
   if (!envCache.has(key)) {
     try {      envCache.set(key, Deno.env.get(key)) }
     catch(e) { envCache.set(key, undefined) } // If there's no permission
   }
-  return envCache.get(key) || deflt
+  const value = envCache.get(key) || deflt
+  if (value == undefined) throw new Error(`env var '${key}' is not defined`)
+  return value
 }
 export { getEnv }
 
 // environment mode --------------------------------------------------------------------------------
-export function isProd(): boolean { return getEnv("env") == "prod" }
-export function isTest(): boolean { return getEnv("env") == "test" }
-export function isDev(): boolean { return !(isProd() || isTest()) }
+export function isProd(): boolean { return getEnv("env", "dev") == "prod" }
+export function isTest(): boolean { return getEnv("env", "dev") == "test" }
+export function isDev():  boolean { return getEnv("env", "dev") == "dev" }

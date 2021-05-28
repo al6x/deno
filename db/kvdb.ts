@@ -7,7 +7,6 @@ export class KVDb {
   // private readonly records: DbTable<KVRecord>
 
   constructor(
-    public  readonly id: string,
     private readonly db: Db,
   ) {
     // this.records = db.table<KVRecord>("kv", ["scope", "key"], false)
@@ -22,7 +21,7 @@ export class KVDb {
         primary key (scope, key)
       );
     `)
-    this.log = new Log(db.id, id)
+    this.log = new Log(db.id || "db", ["kv"])
   }
 
   fget(scope: string, key: string): Promise<string | undefined> {
@@ -78,8 +77,8 @@ export class KVDb {
 // Test --------------------------------------------------------------------------------------------
 // test=KVDb deno run --import-map=import_map.json --unstable --allow-all db/kvdb.ts
 slowTest("KVDb", async () => {
-  const db = new Db("db", "deno_unit_tests")
-  const kvdb = new KVDb("kv", db)
+  const db = new Db("deno_unit_tests")
+  const kvdb = new KVDb(db)
   await kvdb.delAll()
 
   assert.equal(await kvdb.get("test", "a", "none"), "none")

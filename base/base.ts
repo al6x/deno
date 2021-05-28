@@ -62,7 +62,7 @@ function runTests () {
 let testEnabledS: string
 try   { testEnabledS = (getEnv("test") || "").toLowerCase() }
 catch { testEnabledS = "false" }
-let slowTestEnabled = testEnabledS == "slow"
+let slowTestEnabled = testEnabledS == "all"
 let testEnabled = slowTestEnabled || (testEnabledS == "true")
 
 export function test(name: string, test: (() => void) | (() => Promise<void>)) {
@@ -131,6 +131,7 @@ export function doc(...docs: (Doc | (() => Doc))[]) {
 }
 export function asCode(code: string) { return "\`\`\`\n" + code + "\n\`\`\`" }
 
+
 // httpCall ----------------------------------------------------------------------
 export type HttpMethod = 'get' | 'post' | 'put' | 'delete'
 export interface HttpCallOptions {
@@ -171,6 +172,42 @@ export async function httpCall<In, Out>(
     callWithoutTimeout().then(resolve, reject)
   })
 }
+
+
+// httpPost ----------------------------------------------------------------------
+export interface HttpRawOptions {
+  headers?:    { [key: string]: string }
+  timeout_ms?: number
+}
+
+export function httpGet(url: string, options?: HttpRawOptions): Promise<string> {
+  return httpCallRaw("get", url, "", options)
+}
+
+export function httpPost(url: string, content = "", options?: HttpRawOptions): Promise<string> {
+  return httpCallRaw("post", url, content, options)
+}
+
+async function httpCallRaw(method: string, url: string, content = "", options?: HttpRawOptions): Promise<string> {
+  async function callWithoutTimeout() {
+    try {
+      const response = await fetch(url, {
+        method: method.toUpperCase(),
+        ...(options?.headers ? { headers: options?.headers } : {}),
+        ...(content != "" ? { body: content } : {})
+      })
+      if (!response.ok) throw new Error(`can't  post ${url} ${response.status} ${response.statusText}`)
+      return await response.text()
+    } catch (e) {
+      throw e
+    }
+  }
+  return new Promise((resolve, reject) => {
+    if (options?.timeout_ms) setTimeout(() => reject(new Error(`request timed out ${url}`)), options.timeout_ms)
+    callWithoutTimeout().then(resolve, reject)
+  })
+}
+
 
 // buildUrl ----------------------------------------------------------------------
 export function buildUrl(
@@ -346,9 +383,49 @@ Object.defineProperty(Promise.prototype, "cmap", { configurable: false, enumerab
 
 
 
+// parse -------------------------------------------------------------------------------------------
+export function parse(r: RegExp, s: string): string[] {
+  const found = s.match(r)
+  if (!found) return []
+  if (found.length == 1) return [] // matched but there's no capture groups
+  return found.slice(1, found.length)
+}
+
+test("parse", () => {
+  assert.equal(parse(/.+ (\d+) (\d+)/, "a 22 45"), ["22", "45"])
+  assert.equal(parse(/[^;]+;/, "drop table; create table;"), undefined)
+})
 
 
+// parse_named -------------------------------------------------------------------------------------
+export function parseNamed(r: RegExp, s: string): Record<string, string> {
+  const found = s.match(r)
+  return found?.groups || {}
+}
 
+test("parseNamed", () => {
+  assert.equal(parseNamed(/.+ (?<a>\d+) (?<b>\d+)/, "a 22 45"), { "a": "22", "b": "45" })
+})
+
+
+// parse1,2,3,4 ------------------------------------------------------------------------------------
+export function parse1(r: RegExp, s: string): string {
+  const found = parse(r, s)
+  if (found.length != 1) throw new Error(`expected 1 match but found ${found.length}`)
+  return found[0]
+}
+
+export function parse2(r: RegExp, s: string): [string, string] {
+  const found = parse(r, s)
+  if (found.length != 2) throw new Error(`expected 1 match but found ${found.length}`)
+  return [found[0], found[1]]
+}
+
+export function parse3(r: RegExp, s: string): [string, string, string] {
+  const found = parse(r, s)
+  if (found.length != 3) throw new Error(`expected 1 match but found ${found.length}`)
+  return [found[0], found[1], found[2]]
+}
 
 
 

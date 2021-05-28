@@ -47,6 +47,14 @@ export async function setPermanentCookie(ctx: Context, k: string, v: string, dom
   ctx.cookies.set(k, v, { domain: "." + domain, expires: new Date(253402300000000), path: "/" })
 }
 
+export async function delPermanentCookie(ctx: Context, k: string, domain: string) {
+  ctx.cookies.delete(k, { domain: "." + domain, path: "/" })
+}
+
 export async function setSessionCookie(ctx: Context, k: string, v: string) {
   ctx.cookies.set(k, v, { path: "/" })
+}
+
+export async function delSessionCookie(ctx: Context, k: string) {
+  ctx.cookies.delete(k, { path: "/" })
 }
