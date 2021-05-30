@@ -1,5 +1,5 @@
 import * as stdpath from "https://deno.land/std/path/mod.ts"
-import { p, test, assert, take } from "base/base.ts"
+import { p, test, assert, toJson } from "base/base.ts"
 import { Context } from "https://deno.land/x/oak/mod.ts"
 import { assetHash } from "./util.ts"
 
@@ -43,8 +43,9 @@ export async function assetPath(
 
 
 // setPermanentCookie ------------------------------------------------------------------------------
-export async function setPermanentCookie(ctx: Context, k: string, v: string, domain: string) {
-  ctx.cookies.set(k, v, { domain: "." + domain, expires: new Date(253402300000000), path: "/" })
+export async function setPermanentCookie(ctx: Context, k: string, v: string, domain: string, subdomains: boolean) {
+  if (subdomains) domain = "." + domain
+  ctx.cookies.set(k, v, { domain, expires: new Date(253402300000000), path: "/" })
 }
 
 export async function delPermanentCookie(ctx: Context, k: string, domain: string) {
@@ -57,4 +58,11 @@ export async function setSessionCookie(ctx: Context, k: string, v: string) {
 
 export async function delSessionCookie(ctx: Context, k: string) {
   ctx.cookies.delete(k, { path: "/" })
+}
+
+
+// sendJson ----------------------------------------------------------------------------------------
+export async function sendJson(ctx: Context, data: object) {
+  ctx.response.headers.set("Content-Type", "application/json")
+  ctx.response.body = toJson(data)
 }

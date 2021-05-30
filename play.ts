@@ -1,5 +1,7 @@
 // deno run --import-map=import_map.json ./play.ts
-import { p, assert } from "base/base.ts"
+import { p, buildUrl } from "base/base.ts"
 
-let id = "al6x"
-p(id.length >= 4 && /^[a-z0-9]+$/.test(id))
+p(new URL("/").hostname)
+
+// p(buildUrl("http://ya.ru/login", { back: "назад" }))
+// p(new URL(buildUrl("http://ya.ru/login", { back: "назад" })).searchParams.get("back"))

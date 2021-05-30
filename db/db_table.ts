@@ -101,7 +101,13 @@ export class DbTable<T extends object> {
   }
 
 
-  async filter(where?: Where<T>, limit = 0, log?: (log: Log) => void): Promise<T[]> {
+  filter(where?: Where<T>): Promise<T[]>
+  filter(where?: Where<T>, log?: (log: Log) => void): Promise<T[]>
+  filter(where?: Where<T>, limit?: number, log?: (log: Log) => void): Promise<T[]>
+  async filter(where?: Where<T>, arg2?: number | ((log: Log) => void), arg3?: (log: Log) => void): Promise<T[]> {
+    const log  = arg2 != undefined && typeof arg2 == "function" ? arg2 : arg3
+    const limit = arg2 != undefined && typeof arg2 == "number"  ? arg2 : 0
+
     const whereSql = buildWhere<T>(where || sql``, this.ids)
     // let defaultLog = (log: Log) => log.with({ where: sqlToString(whereSql) }).info("filter '{where}'")
     ;(log || defaultWhereLog(whereSql, "filter"))(this.log)

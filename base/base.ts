@@ -211,7 +211,7 @@ async function httpCallRaw(method: string, url: string, content = "", options?: 
 
 // buildUrl ----------------------------------------------------------------------
 export function buildUrl(
-  url: string, query: { [key: string]: string | number | undefined | null } = {}
+  url: string, query: { [key: string]: string | number | undefined | boolean | null } = {}
 ): string {
   const querystring: string[] = []
   for (const key in query) {
@@ -240,6 +240,7 @@ export interface Assert {
   (condition: boolean, message?: string | (() => string)): void
   warn(condition: boolean, message?: string): void
   equal<T>(a: T, b: T, message?: string | (() => string)): void
+  fail(cb: () => void, message?: string | (() => string)): void
   approxEqual(a: number, b: number, message?: string | (() => string), deltaRelative?: number): void
 }
 export const assert = <Assert>function(condition, message): void {
@@ -249,8 +250,19 @@ export const assert = <Assert>function(condition, message): void {
 // assert.warn = (condition, message) => { if (!condition) log('warn', message || 'Assertion error!') }
 assert.equal = (a, b, message) => {
   if (!isEqual(a, b)) {
-    const messageString = message ? (message instanceof Function ? message() : message) :
+    const messageString = message ?
+      (message instanceof Function ? message() : message) :
       `Assertion error: ${toJson(a, true)} != ${toJson(b, true)}`
+    throw new Error(messageString)
+  }
+}
+assert.fail = (cb, message) => {
+  let failed = false
+  try { cb() } catch { failed = true }
+  if (!failed) {
+    const messageString = message ?
+      (message instanceof Function ? message() : message) :
+      `Assertion error: expected to fail but didn't`
     throw new Error(messageString)
   }
 }
@@ -393,7 +405,7 @@ export function parse(r: RegExp, s: string): string[] {
 
 test("parse", () => {
   assert.equal(parse(/.+ (\d+) (\d+)/, "a 22 45"), ["22", "45"])
-  assert.equal(parse(/[^;]+;/, "drop table; create table;"), undefined)
+  assert.equal(parse(/[^;]+;/, "drop table; create table;"), [])
 })
 
 
