@@ -2,6 +2,7 @@
   "imports": {
     "base/": "./base/",
     "db/": "./db/",
+    "http/": "./http/",
 
     "postgres/": "https://deno.land/x/postgres@v0.11.2/"
   }
