@@ -136,7 +136,7 @@ export class HttpServer<HttpState> {
   }
 
   start(): Promise<void> {
-    return this.oak.listen({ port: this.config.port, hostname: "127.0.0.1" })
+    return this.oak.listen({ port: this.config.port }) // With explicit "localhost" is not working on linode
   }
 }
 

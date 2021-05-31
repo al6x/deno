@@ -43,7 +43,8 @@ export interface PgUrl {
 }
 
 export function parsePgUrl(name_or_url: string): PgUrl {
-  const url = name_or_url.includes(":") ? name_or_url : `postgresql://postgres@localhost:5432/${name_or_url}`
+  // Url with `localhost` instead of `127.0.0.1` is not working on linode
+  const url = name_or_url.includes(":") ? name_or_url : `postgresql://postgres@127.0.0.1:5432/${name_or_url}`
   let parsed = new URL(url)
   return {
     url,
@@ -51,7 +52,7 @@ export function parsePgUrl(name_or_url: string): PgUrl {
     port:     parseInt(parsed.port),
     name:     parsed.pathname.replace(/^\//, ""),
     user:     parsed.username,
-    password: parsed.username
+    password: parsed.password
   }
 }
 
