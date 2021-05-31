@@ -97,6 +97,7 @@ export class HttpServer<HttpState> {
         // Handling errors
         if (e instanceof HttpError) {
           log
+            .with(e)
             .with({ duration_ms: Date.now() - ctx.state.startedMs })
             .warn("{method4} {path} failed, {duration_ms}ms")
           ctx.response.status = 400
@@ -136,7 +137,7 @@ export class HttpServer<HttpState> {
   }
 
   start(): Promise<void> {
-    return this.oak.listen({ port: this.config.port }) // With explicit "localhost" is not working on linode
+    return this.oak.listen({ port: this.config.port }) // With explicit hostname it's not working on linode
   }
 }
 

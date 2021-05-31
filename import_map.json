@@ -3,6 +3,7 @@
     "base/": "./base/",
     "db/": "./db/",
     "http/": "./http/",
+    "ws/": "./ws/",
 
     "postgres/": "https://deno.land/x/postgres@v0.11.2/"
   }
