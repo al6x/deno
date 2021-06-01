@@ -42,6 +42,7 @@ export async function assetFilePathSlow(path: string, assetFilePaths: string[]):
   if (path.includes("..")) throw new Error(`Invalid path, ${path}`)
   for (const assetFilePath of assetFilePaths) {
     let fullPath = stdpath.join(assetFilePath, path)
+    p(fullPath, await fs.exists(fullPath))
     if (await fs.exists(fullPath)) return { found: true, value: fullPath }
   }
   return { found: false, message: `Asset file not found, ${path}` }

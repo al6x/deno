@@ -1,4 +1,4 @@
-// tsc --lib "es6,dom" --target es5 --module none ws/pubsub_client.ts
+// tsc --lib "es6,dom" --target es5 --module none ws/client/pubsub.ts
 var PubSubClient = /** @class */ (function () {
     function PubSubClient(url, topics, onmessage, increment_ms, max_reconnect_delay_ms) {
         if (increment_ms === void 0) { increment_ms = 500; }
@@ -49,10 +49,11 @@ var PubSubClient = /** @class */ (function () {
             success = true;
             var message = JSON.parse(event.data);
             if ("special" in message) {
-                if (message.special == "ping")
-                    return;
-                else
-                    console.error("pubsub, unknown special message " + message.special);
+                switch (message.special) {
+                    case "ping": return;
+                    case "flush": return;
+                    default: console.error("pubsub, unknown special message " + message.special);
+                }
             }
             // Server may resend message twice, if network error occured, id is random and not not increasing
             // if (last_messages_ids[message.topic] == message.id) return
@@ -91,6 +92,15 @@ var PubSubClient = /** @class */ (function () {
 function info(msg) { console.log("  pubsub " + msg); }
 function error(msg) { console.log("E pubsub " + msg); }
 function warn(msg) { console.log("W pubsub " + msg); }
+// export function secureRandomHash(lengthB = 32): string {
+//   const data = new Uint8Array(lengthB)
+//   crypto.getRandomValues(data)
+//   // Encoding as base58
+//   const base58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+//   let hash = ""
+//   for(let i = 0; i < data.length; i++) hash += base58[Math.floor(Math.random() * base58.length)]
+//   return hash
+// }
 // declare class EventSource {
 //   constructor(url: string)
 //   close(): void

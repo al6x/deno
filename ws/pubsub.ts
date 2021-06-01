@@ -1,6 +1,6 @@
 import { p, Errorneous, ensure, once } from "base/base.ts"
 import { Log } from "base/log.ts"
-import { ServerSentEventTarget, RouterContext } from "https://deno.land/x/oak/mod.ts"
+import { ServerSentEventTarget, Context } from "https://deno.land/x/oak/mod.ts"
 
 export abstract class PubSub {
   private readonly log: Log
@@ -18,10 +18,12 @@ export abstract class PubSub {
 
   constructor(
     public readonly maxSessionsPerUser = 5,
-    public readonly pingInterval       = 15000
+    public readonly pingInterval       = 30000
   ) {
     this.log = new Log("PubSub")
-    setInterval(() => this.pingSessions(), this.pingInterval)
+    setTimeout(() => {
+      setInterval(() => this.pingSessions(), this.pingInterval)
+    })
   }
 
   publishForAllSessions(user_id: string, message: object) {
@@ -36,6 +38,9 @@ export abstract class PubSub {
     const session = this.sessions.get(session_id)
     if (!session) return
     session.client.dispatchMessage(message)
+
+    // Seem slike some bug, the first message is not published untill the second one is published
+    session.client.dispatchMessage({ special: "ping" })
   }
 
   publish(topic: string, message: object) {
@@ -55,7 +60,7 @@ export abstract class PubSub {
     }
   }
 
-  abstract authorise(ctx: RouterContext): Errorneous<{ user_id: string, session_id: string, topics: string[] }>
+  abstract authorise(ctx: Context): Errorneous<{ user_id: string, session_id: string, topics: string[] }>
   // {
   //   const query = new URLSearchParams(ctx.request.url.search)
   //   const topics = (query.get("topics") || "").split(",")
@@ -99,7 +104,7 @@ export abstract class PubSub {
     try { client.close().catch((_error) => {}) } catch {}
   }
 
-  handle = (ctx: RouterContext): void => {
+  handle = (ctx: Context): void => {
     // Authorising request
     const parsed = this.authorise(ctx)
     if (parsed.isError) {

@@ -1,4 +1,5 @@
-// tsc --lib "es6,dom" --target es5 --module none ws/pubsub_client.ts
+// tsc --lib "es6,dom" --target es5 --module none ws/client/pubsub.ts
+// cp ws/client/pubsub.js plot/assets/api-v1/assets/pubsub.js
 
 // First reconnect is instant, consequent reconnects are randomised progressive `+ increment_ms`
 
@@ -59,8 +60,11 @@ class PubSubClient {
       let message = JSON.parse(event.data)
 
       if ("special" in message) {
-        if (message.special == "ping") return
-        else console.error("pubsub, unknown special message " + message.special)
+        switch (message.special) {
+          case "ping":  return
+          case "flush": return
+          default:      console.error("pubsub, unknown special message " + message.special)
+        }
       }
 
       // Server may resend message twice, if network error occured, id is random and not not increasing
@@ -103,6 +107,17 @@ class PubSubClient {
 function info(msg: string) { console.log("  pubsub " + msg) }
 function error(msg: string) { console.log("E pubsub " + msg) }
 function warn(msg: string) { console.log("W pubsub " + msg) }
+
+// export function secureRandomHash(lengthB = 32): string {
+//   const data = new Uint8Array(lengthB)
+//   crypto.getRandomValues(data)
+
+//   // Encoding as base58
+//   const base58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+//   let hash = ""
+//   for(let i = 0; i < data.length; i++) hash += base58[Math.floor(Math.random() * base58.length)]
+//   return hash
+// }
 
 // declare class EventSource {
 //   constructor(url: string)

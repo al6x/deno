@@ -17,7 +17,7 @@ export interface CtxBaseState {
 }
 
 interface ServerConfig {
-  readonly host:            string
+  // readonly host:            string
   readonly port:            number
   readonly showErrors:      boolean
   readonly assetsPath:      string
@@ -29,7 +29,7 @@ interface ServerConfig {
 }
 
 function defaultConfig(): ServerConfig { return {
-  host:            "localhost",
+  // host:            "localhost",
   port:            8080,
   showErrors:      !isProd(),
   assetsPath:      "/assets",
@@ -51,7 +51,7 @@ export class HttpServer<HttpState> {
     this.log    = new Log("http")
     this.oak.addEventListener("listen", () => {
       if (this.config.voice) say("started").catch(() => {})
-      this.log.with({ host: this.config.host, port: this.config.port }).info("started on http://{host}:{port}")
+      this.log.with({ port: this.config.port }).info("started on {port} port")
     })
 
     this.oak.use(this.buildAssetMiddleware())
@@ -122,14 +122,18 @@ export class HttpServer<HttpState> {
   }
 
   private buildAssetMiddleware(): Middleware<CtxBaseState> {
+    const assetsPathPrefix = this.config.assetsPath + "/"
     return async (ctx, next) => {
-      if(ctx.request.url.pathname.startsWith(this.config.assetsPath + "/")) {
-        let found = await assetFilePath(ctx.request.url.pathname, this.config.assetsFilePaths)
-        if (!found.found) throw new HttpError("Not found")
-        await ctx.send({
-          // root: stdpath.dirname(found.value)
-          path: found.value, root: "", immutable: this.config.cacheAssets
-        })
+      const url = ctx.request.url
+      if(url.pathname.startsWith(assetsPathPrefix)) {
+        let found = await assetFilePath(url.pathname.replace(assetsPathPrefix, "/"), this.config.assetsFilePaths)
+        if (found.found) {
+          await ctx.send({
+            path: found.value, root: "/", immutable: this.config.cacheAssets
+          })
+        } else {
+          ctx.throw(404, `Asset not found`)
+        }
       } else {
         await next()
       }
