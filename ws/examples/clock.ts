@@ -11,7 +11,7 @@ class TestPubSub extends PubSub {
     return { isError: false, value: { user_id: "user1", session_id: "session1", topics } }
   }
 }
-const pubsub = new TestPubSub()
+const pubsub = new TestPubSub(true)
 
 let i = 0
 setInterval(() => {

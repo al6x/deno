@@ -17,6 +17,7 @@ export abstract class PubSub {
   private readonly user_sessions = new Map<string, Set<string>>() // user_id -> user_sessions
 
   constructor(
+    public readonly cors               = false,
     public readonly maxSessionsPerUser = 5,
     public readonly pingInterval       = 30000
   ) {
@@ -130,7 +131,7 @@ export abstract class PubSub {
     this.log.with({ user_id, session_id }).info("{user_id} {session_id} connect")
     let client: ServerSentEventTarget | undefined
     try {
-      const headers = new Headers([["Access-Control-Allow-Origin", "*"]])
+      const headers = this.cors ? new Headers([["Access-Control-Allow-Origin", "*"]]) : new Headers()
       const tmpClient = ctx.sendEvents({ headers })
 
       // close is not reliable
