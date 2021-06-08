@@ -1,9 +1,9 @@
-import { something } from './base.ts'
+import { some } from './base.ts'
 import { createRequire } from 'https://deno.land/std/node/module.ts'
 
 let seedrandom: (seed: number | string) => (() => number)
 {
-  let seedrandomLib: something = undefined
+  let seedrandomLib: some = undefined
   seedrandom = (seed) => {
     // Code for proper random generator is not simple, the library needed
     if (seedrandomLib === undefined) {

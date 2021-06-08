@@ -1,4 +1,4 @@
-import { p, something, assert, keys, slowTest } from "base/base.ts"
+import { p, some, assert, keys, slowTest } from "base/base.ts"
 import { Log } from "base/log.ts"
 import { PgUrl, parsePgUrl, decode, encode } from "./utils.ts"
 import { sql, SQL, sqlToString } from "./sql.ts"
@@ -12,7 +12,7 @@ import { formatTime } from "base/time.ts"
 import { parseNotice } from "postgres/connection/warning.ts"
 import { Connection } from "postgres/connection/connection.ts"
 
-(Connection.prototype as something).processNotice = function(msg: something): something {
+(Connection.prototype as some).processNotice = function(msg: some): some {
   return parseNotice(msg)
 }
 
@@ -201,7 +201,7 @@ async exec(sql: SQL, log?: LogFn): Promise<void> {
     const allKeys = Object.keys(row)
     if (allKeys.length > 1) throw new Error(`expected single value in row but got ${allKeys.length} columns`)
     if (allKeys.length < 1) return undefined
-    return (row as something)[allKeys[0]]
+    return (row as some)[allKeys[0]]
   }
 
   async getValue<T extends DbValue>(sql: SQL, log?: LogFn): Promise<T> {
@@ -210,7 +210,7 @@ async exec(sql: SQL, log?: LogFn): Promise<void> {
     const allKeys = Object.keys(row)
     if (allKeys.length > 1) throw new Error(`expected single value in row but got ${allKeys.length} columns`)
     if (allKeys.length < 1) throw new Error(`expected single value in row but got nothing`)
-    return (row as something)[allKeys[0]]
+    return (row as some)[allKeys[0]]
   }
 
   private createPool(): Pool {

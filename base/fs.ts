@@ -1,4 +1,4 @@
-import { something, assert, p, ensureError, toJson } from './base.ts'
+import { some, assert, p, ensureError, toJson } from './base.ts'
 import * as denoPath from 'https://deno.land/std/path/mod.ts'
 import * as denoFs from 'https://deno.land/std/fs/mod.ts'
 
@@ -28,7 +28,7 @@ export type Entry = { type: EntryType, name: string }
 // readFile ---------------------------------------------------------------------------------------
 function readFile(path: string): Promise<Uint8Array>
 function readFile(path: string, options: { encoding: string }): Promise<string>
-async function readFile(path: string, options?: something) {
+async function readFile(path: string, options?: some) {
   const buffer = await Deno.readFile(path)
   if (options) {
     const decoder = new TextDecoder(options.encoding)
@@ -41,7 +41,7 @@ export { readFile }
 // readFileSync ----------------------------------------------------------------------------------
 function readFileSync(path: string): Uint8Array
 function readFileSync(path: string, options: { encoding: string }): string
-function readFileSync(path: string, options?: something) {
+function readFileSync(path: string, options?: some) {
   const buffer = Deno.readFileSync(path)
   if (options) {
     const decoder = new TextDecoder(options.encoding)
@@ -105,7 +105,7 @@ export async function appendToFile(
 
 
 // readJson ---------------------------------------------------------------------------------------
-export async function readJson<T = something>(path: string): Promise<T> {
+export async function readJson<T = some>(path: string): Promise<T> {
   return JSON.parse(await readFile(path, { encoding: 'utf8' }))
 }
 

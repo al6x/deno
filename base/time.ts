@@ -1,10 +1,10 @@
-import { something, take } from './base.ts'
+import { some, take } from './base.ts'
 
 
 export function parseYyyyMmDd(yyyyMmDd: string): [number, number, number] {
   assertYyyyMmDd(yyyyMmDd)
   const parts = yyyyMmDd.split('-').map((v: string) => parseInt(v))
-  return parts as something
+  return parts as some
 }
 
 function toYyyyMmDd(timestamp: number): string
@@ -41,14 +41,14 @@ export { toYyyyMmDdHhMmSs as formatTime }
 export function yyyyMmToYm(yyyyMm: string): [number, number] {
   assertYyyyMm(yyyyMm)
   const parts = yyyyMm.split('-').map((v: string) => parseInt(v))
-  return parts as something
+  return parts as some
 }
 
 
 export function yyyyMmDdToYmd(yyyyMmDd: string): [number, number, number] {
   assertYyyyMmDd(yyyyMmDd)
   const parts = yyyyMmDd.split('-').map((v: string) => parseInt(v))
-  return parts as something
+  return parts as some
 }
 
 

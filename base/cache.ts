@@ -1,21 +1,21 @@
-import { something, hour, toJson, p } from './base.ts'
+import { some, hour, toJson, p } from './base.ts'
 import * as fs from './fs.ts'
 import { MultiMap } from './multi_map.ts'
 import { md5 } from './md5.ts'
 
 // cacheFn ------------------------------------------------------------------------------
 // Function should have simple arguments like string, number, boolean
-export function cacheFn<Fn extends (...args: something) => something>(
+export function cacheFn<Fn extends (...args: some) => some>(
   fn: Fn, toKey?: ((...args: Parameters<Fn>) => (number | boolean | string)[])
 ): Fn {
-  const cache = new MultiMap<something, something>()
-  let noArgsCashe: something = undefined
-  return ((...args: something[]) => {
+  const cache = new MultiMap<some, some>()
+  let noArgsCashe: some = undefined
+  return ((...args: some[]) => {
     if (args.length == 0) {
       if (!noArgsCashe) noArgsCashe = fn()
       return noArgsCashe
     } else {
-      const key = toKey ? toKey(...args as something) : args
+      const key = toKey ? toKey(...args as some) : args
       let value = cache.get(key)
       if (!value) {
         // Ensuring args are of simple types, null or undefined are not allowed
@@ -33,18 +33,18 @@ export function cacheFn<Fn extends (...args: something) => something>(
       }
       return value
     }
-  }) as something
+  }) as some
 }
 
 
 // cacheFs ------------------------------------------------------------------------------
-interface CacheData { value: something, timestamp: number }
+interface CacheData { value: some, timestamp: number }
 export function cacheFs<Fn extends Function>(key: string, fn: Fn, options: {
   cachePath:  string
   expiration?: number
 }) {
-  let value: something = undefined
-  return ((...args: something[]) => {
+  let value: some = undefined
+  return ((...args: some[]) => {
     if (value === undefined) {
       const expiration = options.expiration || 1 * hour
       const path = fs.resolve(options.cachePath, 'cache', key + '_' + md5(toJson(args)))
@@ -65,5 +65,5 @@ export function cacheFs<Fn extends Function>(key: string, fn: Fn, options: {
       }
     }
     return value
-  }) as something
+  }) as some
 }

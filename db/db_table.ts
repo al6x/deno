@@ -1,4 +1,4 @@
-import { p, something, assert, ensure, slowTest } from "base/base.ts"
+import { p, some, assert, ensure, slowTest } from "base/base.ts"
 import { Log } from "base/log.ts"
 import { sql, SQL, sqlToString, buildWhere, Where } from "./sql.ts"
 import { Db } from "./db.ts"

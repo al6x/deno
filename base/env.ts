@@ -1,3 +1,5 @@
+declare const Deno: any
+
 const envCache = new Map<string, string | undefined>()
 
 function getEnv(key: string): string

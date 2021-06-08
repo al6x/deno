@@ -1,10 +1,10 @@
-import { assert, ErrorneousU, something, p, ensureError, toJson } from './base.ts'
+import { assert, ErrorneousU, some, p, ensureError, toJson } from './base.ts'
 
 const jsonOutputToken = "shell_call_jsonOutput:"
 export async function onShellCall<BeforeOutput>({ before, process, after } : {
-  before:  (beforeInput: something) => Promise<BeforeOutput>,
-  process: (beforeOputput: BeforeOutput, input: something) => Promise<something>,
-  after:   (beforeOputput: BeforeOutput | undefined, afterInput: something) => Promise<void>
+  before:  (beforeInput: some) => Promise<BeforeOutput>,
+  process: (beforeOputput: BeforeOutput, input: some) => Promise<some>,
+  after:   (beforeOputput: BeforeOutput | undefined, afterInput: some) => Promise<void>
 }) {
   assert.equal(Deno.args.length, 1, "only one argument expected")
   let data = JSON.parse(Deno.args[0])
@@ -19,7 +19,7 @@ export async function onShellCall<BeforeOutput>({ before, process, after } : {
 
   // Processing
   assert(Array.isArray(data.inputs), "inputs should be an array")
-  let results: ErrorneousU<something>[] = []
+  let results: ErrorneousU<some>[] = []
   if (beforeOutput.is_error) {
     results = data.inputs.map(() => beforeOutput)
   } else {

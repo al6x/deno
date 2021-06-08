@@ -1,4 +1,4 @@
-type something = any
+type some = any
 type SimpleTypes = number | string
 
 export class Hash<V, K extends SimpleTypes = string> {
@@ -84,5 +84,5 @@ export class Hash<V, K extends SimpleTypes = string> {
 
   values(): V[] { return Array.from(this._map.values()) }
 
-  toJSON() { return (this._map as something).toJSON() }
+  toJSON() { return (this._map as some).toJSON() }
 }

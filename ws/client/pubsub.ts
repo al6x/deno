@@ -3,11 +3,11 @@
 
 // First reconnect is instant, consequent reconnects are randomised progressive `+ increment_ms`
 
-type something = any
+type some = any
 type OnMessage = (message: object) => void
 
 class PubSubClient {
-  private es?:     something
+  private es?:     some
   private fullUrl: string
 
   constructor(
@@ -31,7 +31,7 @@ class PubSubClient {
 
   private reconnect(attempt: number) {
     info("connecting to " + this.fullUrl)
-    let es = new (window as something).EventSource(this.fullUrl)
+    let es = new (window as some).EventSource(this.fullUrl)
     this.es = es
 
     function closeAgain() {
@@ -41,7 +41,7 @@ class PubSubClient {
     }
 
     let success = false, closed = false
-    es.onopen = (_event: something) => {
+    es.onopen = (_event: some) => {
       if (closed) {
         closeAgain()
         return
@@ -50,7 +50,7 @@ class PubSubClient {
       success = true
     }
 
-    es.onmessage = (event: something) => {
+    es.onmessage = (event: some) => {
       if (closed) {
         closeAgain()
       }
@@ -74,7 +74,7 @@ class PubSubClient {
       this.onmessage(message)
     }
 
-    es.onerror = (_event: something) => {
+    es.onerror = (_event: some) => {
       if (closed) {
         closeAgain()
         return

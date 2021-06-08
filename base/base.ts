@@ -5,10 +5,10 @@ export * from './map.ts'
 // Safe any ----------------------------------------------------------------------------------------
 export type something = any
 export type some = any
-let deno = 'Deno' in window ? (window as something).Deno : undefined
+let deno = 'Deno' in window ? (window as some).Deno : undefined
 
 // Global variables for browser and node -----------------------------------------------------------
-// export const global: something = window
+// export const global: some = window
 
 // Useful constants --------------------------------------------------------------------------------
 export const kb = 1024, mb = 1024 * kb
@@ -20,15 +20,15 @@ export const million = 1000000, billion = 1000 * million
 export function isBrowser() { return deno == undefined }
 
 // p -----------------------------------------------------------------------------------------------
-function mapToJsonIfDefined(v: something) { return v && v.toJSON ? v.toJSON() : v }
-export function prettyPrint(v: something, colors = false) {
+function mapToJsonIfDefined(v: some) { return v && v.toJSON ? v.toJSON() : v }
+export function prettyPrint(v: some, colors = false) {
   v = deepMap(v, mapToJsonIfDefined)
   return deno && typeof v == 'object' ? deno.inspect(v, { colors }) : v
 }
-export function p(...args: something): void {
+export function p(...args: some): void {
   if (isBrowser()) console.log(...args)
   else {
-    const formatted = args.map((v: something) => prettyPrint(v, true))
+    const formatted = args.map((v: some) => prettyPrint(v, true))
     // It won't printed properly for multiple arguments
     args.length == 1 ? console.log(...formatted) : console.log(...formatted)
   }
@@ -91,11 +91,11 @@ export function slowTest(name: string, test: (() => void) | (() => Promise<void>
 // }
 // const focusedTests: [string | undefined, () => void][] = []
 // const tests: [string | undefined, () => void][] = []
-// export const test = <TestApi>function(...args: something[]) {
+// export const test = <TestApi>function(...args: some[]) {
 //   const [name, fn] = args.length == 1 ? [undefined, args[0]] : args
 //   tests.push([name, fn])
 // }
-// test.focus = function(...args: something[]) {
+// test.focus = function(...args: some[]) {
 //   const [name, fn] = args.length == 1 ? [undefined, args[0]] : args
 //   focusedTests.push([name, fn])
 // }
@@ -279,7 +279,7 @@ assert.approxEqual = (a, b, message, deltaRelative) => {
 
 // deepCloneAndSort ------------------------------------------------------------
 // Clone object with object properties sorted, including for nested objects
-export function deepCloneAndSort(obj: something): something {
+export function deepCloneAndSort(obj: some): some {
   if      (obj === null || typeof obj !== 'object') return obj
   else if (Array.isArray(obj))                      return obj.map(deepCloneAndSort)
   else if ('toJSON' in obj)                         return deepCloneAndSort(obj.toJSON())
@@ -303,10 +303,10 @@ export function isEqual(a: unknown, b: unknown): boolean {
 }
 
 // deepMap -----------------------------------------------------------------------
-export function deepMap(obj: something, map: (o: something) => something): something {
+export function deepMap(obj: some, map: (o: some) => some): some {
   obj = map(obj)
   if      (obj === null || typeof obj !== 'object') return obj
-  else if ('map' in obj)                            return obj.map((v: something) => deepMap(v, map))
+  else if ('map' in obj)                            return obj.map((v: some) => deepMap(v, map))
   else                                              return Object.assign({},
       ...Object.entries(obj)
         .map(([k, v]) => ({ [k]: deepMap(v, map) })
@@ -326,7 +326,7 @@ test("deepMap", () => {
 
 
 // export function logWithUser(
-//   level: LogLevel, user: string, message: string, short?: something, detailed?: something
+//   level: LogLevel, user: string, message: string, short?: some, detailed?: some
 // ): string { return log(level, `${pad(user, 8)} ${message}`, short, detailed) }
 
 
@@ -367,7 +367,7 @@ export let cleanStack: (stack: string) => string
   }
 }
 
-// uniglobal.process && uniglobal.process.on('uncaughtException', function(error: something) {
+// uniglobal.process && uniglobal.process.on('uncaughtException', function(error: some) {
 //   error.stack = cleanStack(error.stack)
 //   console.log('')
 //   console.error(error)
@@ -377,19 +377,19 @@ export let cleanStack: (stack: string) => string
 
 // Promise ------------------------------------------------------------------------
 export function once<F extends Function>(f: F): F {
-  let called = false, result: something = undefined
-  return function (this: something) {
+  let called = false, result: some = undefined
+  return function (this: some) {
     if (called) return result
     result = f.apply(this, arguments)
     called = true
     return result
-  } as something
+  } as some
 }
 
 
 // Promise ------------------------------------------------------------------------
 // For better logging, by default promise would be logged as `{}`
-;(Promise.prototype as something).toJSON = function() { return 'Promise' }
+;(Promise.prototype as some).toJSON = function() { return 'Promise' }
 Object.defineProperty(Promise.prototype, "cmap", { configurable: false, enumerable: false })
 
 
@@ -535,7 +535,7 @@ export function reverse<T>(list: T[]): T[] {
 function each<T>(list: T[], f: (v: T, i: number) => void): void
 function each<K, V>(map: Map<K, V>, f: (v: V, k: K) => void): void
 function each<M extends {}, K extends keyof M>(map: M, f: (v: M[K], k: K) => void): void
-function each<T>(o: T[] | { [key: string]: T }, f: (v: T, i: something) => void): void {
+function each<T>(o: T[] | { [key: string]: T }, f: (v: T, i: some) => void): void {
   if      (o instanceof Array) for(let i = 0; i < o.length; i++) f(o[i], i)
   else if (o instanceof Map)   for(const [k, v] of o) f(v, k)
   else                         for(const k in o) if (o.hasOwnProperty(k)) f(o[k], k)
@@ -551,7 +551,7 @@ export type Found<V> = { found: true, value: V } | { found: false, message: stri
 function find<T>(list: T[], v: T): T | undefined
 function find<T>(list: T[], f: (v: T, i: number) => boolean): T | undefined
 function find<T>(map: { [key: string]: T }, f: (v: T, k: string) => boolean): T | undefined
-function find<T>(o: T[] | { [key: string]: T }, finder: T | ((v: T, i: something) => boolean)): T | undefined {
+function find<T>(o: T[] | { [key: string]: T }, finder: T | ((v: T, i: some) => boolean)): T | undefined {
   const predicate = finder instanceof Function ? finder : (v: T) => v == finder
   if (o instanceof Array) for(let i = 0; i < o.length; i++) if (predicate(o[i], i)) return o[i]
   else                    for(const k in o) if (o.hasOwnProperty(k)) if (predicate(o[k], k)) return o[k]
@@ -567,7 +567,7 @@ function ensureFind<T>(
   map: { [key: string]: T }, f: (v: T, k: string) => boolean, onError?: string | (() => string)
 ): T
 function ensureFind<T>(
-  o: something, finder: T | ((v: T, i: something) => boolean), onError?: string | (() => string)
+  o: some, finder: T | ((v: T, i: some) => boolean), onError?: string | (() => string)
 ): T {
   const found = find(o, finder) as T
   if (found === undefined)
@@ -580,7 +580,7 @@ export { ensureFind }
 // findIndex ----------------------------------------------------------------------------
 function findIndex<T>(list: T[], v: T): number | undefined
 function findIndex<T>(list: T[], f: (v: T, i: number) => boolean): number | undefined
-function findIndex<T>(list: T[], finder: T | ((v: T, i: something) => boolean)): number | undefined {
+function findIndex<T>(list: T[], finder: T | ((v: T, i: some) => boolean)): number | undefined {
   const predicate = finder instanceof Function ? finder : (v: T) => v == finder
   for(let i = 0; i < list.length; i++) if (predicate(list[i], i)) return i
   return undefined
@@ -591,7 +591,7 @@ export { findIndex }
 // findLastIndex -----------------------------------------------------------------------
 function findLastIndex<T>(list: T[], v: T): number | undefined
 function findLastIndex<T>(list: T[], f: (v: T, i: number) => boolean): number | undefined
-function findLastIndex<T>(list: T[], finder: T | ((v: T, i: something) => boolean)): number | undefined {
+function findLastIndex<T>(list: T[], finder: T | ((v: T, i: some) => boolean)): number | undefined {
   const predicate = finder instanceof Function ? finder : (v: T) => v == finder
   for(let i = list.length - 1; i >= 0; i--) if (predicate(list[i], i)) return i
   return undefined
@@ -603,7 +603,7 @@ export { findLastIndex }
 // groupBy ------------------------------------------------------------------------------
 function groupBy<V>(list: V[], f: (v: V, i: number) => number): Map<number, V[]>
 function groupBy<V>(list: V[], f: (v: V, i: number) => string): Map<string, V[]>
-function groupBy<V>(list: V[], f: (v: V, i: something) => something): Map<something, V[]> {
+function groupBy<V>(list: V[], f: (v: V, i: some) => some): Map<some, V[]> {
   return reduce(list, new Map<string | number, V[]>(), (acc, v, i) => {
     const key = f(v, i)
     let group = acc.get(key)
@@ -675,7 +675,7 @@ export { entries }
 function has<T>(list: T[], v: T): boolean
 function has<T>(list: T[], f: (v: T, i: number) => boolean): boolean
 function has<T>(map: { [key: string]: T }, f: (v: T, k: string) => boolean): boolean
-function has(o: something, finder: something): boolean { return !!find(o, finder) }
+function has(o: some, finder: some): boolean { return !!find(o, finder) }
 export { has }
 
 
@@ -684,15 +684,15 @@ function partition<T>(list: Array<T>, f: Predicate<T, number>): [Array<T>, Array
 function partition<T>(list: Array<T>, keys: number[]): [Array<T>, Array<T>]
 function partition<M extends {}, K extends keyof M>(map: M, f: Predicate<M[keyof M], keyof M>): [M, M]
 function partition<M extends {}, K extends keyof M>(map: M, keys: (keyof M)[]): [Pick<M, K>, Exclude<M, K>]
-function partition(o: something, splitter: something) {
+function partition(o: some, splitter: some) {
   if (o instanceof Array) {
     const selected = new Array(), rejected = new Array()
-    const f = splitter instanceof Function ? splitter : (_v: something, i: something) => splitter.includes(i)
+    const f = splitter instanceof Function ? splitter : (_v: some, i: some) => splitter.includes(i)
     each(o, (v, i) => f(v, i) ? selected.push(v) : rejected.push(v))
     return [selected, rejected]
   } else {
-    const selected = {} as something, rejected = {} as something
-    const f = splitter instanceof Function ? splitter : (_v: something, k: something) => splitter.includes(k)
+    const selected = {} as some, rejected = {} as some
+    const f = splitter instanceof Function ? splitter : (_v: some, k: some) => splitter.includes(k)
     each(o, (v, k) => f(v, k) ? selected[k] = v : rejected[k] = v)
     return [selected, rejected]
   }
@@ -712,9 +712,9 @@ function sort<V>(list: V[], comparator?: (a: V, b: V) => number): V[] {
       return list
     } else {
       if      (typeof list[0] == 'number')
-        comparator = function(a: number, b: number) { return a - b } as something
+        comparator = function(a: number, b: number) { return a - b } as some
       else if (typeof list[0] == 'string')
-        comparator = function(a: string, b: string) { return a.localeCompare(b) } as something
+        comparator = function(a: string, b: string) { return a.localeCompare(b) } as some
       else
         throw new Error(`the 'comparator' required to sort a list of non numbers or strings`)
 
@@ -754,23 +754,23 @@ function filterMap<V, S>(list: V[], f: (v: V, i: number) => S | false): S[]
 function filterMap<V, S>(map: Map<number, V>, f: (v: V, k: number) => S | false): Map<number, S>
 function filterMap<V, S>(map: Map<string, V>, f: (v: V, k: string) => S | false): Map<string, S>
 function filterMap<V, S>(map: { [key: string]: V }, f: (v: V, k: string) => S | false): { [key: string]: S }
-function filterMap(o: something, f: something): something {
+function filterMap(o: some, f: some): some {
   if (o instanceof Array) {
-    const filtered: something[] = []
+    const filtered: some[] = []
     each(o, (v, k) => {
       const r = f(v, k)
       if (r !== false) filtered.push(r)
     })
     return filtered
   } else if (o instanceof Map) {
-    const filtered = new Map<something, something>()
+    const filtered = new Map<some, some>()
     each(o, (v, k) => {
       const r = f(v, k)
       if (r !== false) filtered.set(k, r)
     })
     return filtered
   } else {
-    const filtered: something = {}
+    const filtered: some = {}
     each(o, (v, k) => {
       const r = f(v, k)
       if (r !== false) filtered[k] = r
@@ -801,12 +801,12 @@ function reject<T>(list: Array<T>, f: Predicate<T, number>): Array<T>
 function reject<T>(list: Array<T>, keys: number[]): Array<T>
 function reject<T>(map: { [key: string]: T }, f: Predicate<T, string>): { [key: string]: T }
 function reject<T>(map: { [key: string]: T }, keys: string[]): { [key: string]: T }
-function reject(o: something, f: something) { return partition(o, f)[1] }
+function reject(o: some, f: some) { return partition(o, f)[1] }
 export { reject }
 
 // uniq ---------------------------------------------------------------------------
 export function unique<V, Key>(list: Array<V>, toKey?: (v: V) => Key): Array<V> {
-  const set = new Set<something>()
+  const set = new Set<some>()
   const _toKey = toKey || ((v: V) => v)
   return list.filter((v) => {
     const key = _toKey(v)
@@ -822,8 +822,8 @@ export function unique<V, Key>(list: Array<V>, toKey?: (v: V) => Key): Array<V> 
 // pick ---------------------------------------------------------------------------
 function pick<T>(list: T[], keys: number[]): T[]
 function pick<T extends {}, K extends keyof T>(map: T, k: K[]): Pick<T, K>
-function pick(o: something, keys: (string | number)[]) {
-  return partition(o, (_v, i: something) => keys.includes(i))[0]
+function pick(o: some, keys: (string | number)[]) {
+  return partition(o, (_v, i: some) => keys.includes(i))[0]
 }
 export { pick }
 test("pick", () => {
@@ -834,7 +834,7 @@ test("pick", () => {
 // ensure --------------------------------------------------------------------------------
 export function ensure<V>(value: (V | undefined) | Found<V>, info?: string): V {
   if ((typeof value == 'object') && ('found' in value)) {
-    if (!value.found) throw new Error((value as something).message || `value${info ? ' ' + info : ''} not found`)
+    if (!value.found) throw new Error((value as some).message || `value${info ? ' ' + info : ''} not found`)
     else              return value.value
   } else if ((typeof value == 'string')) {
     if (value == "") throw new Error(`string value${info ? ' ' + info : ''} not found`)
@@ -851,7 +851,7 @@ export function ensure<V>(value: (V | undefined) | Found<V>, info?: string): V {
 // function remove<V>(list: Array<V>, f: Predicate<V, number>): Array<V>
 // function remove<V, K>(map: Map<K, V>, k: K): V | undefined
 // function remove<V, K>(map: Map<K, V>, f: Predicate<V, K>): Map<K, V>
-// function remove<V, K>(o: Array<V> | Map<K, V>, f: something) {
+// function remove<V, K>(o: Array<V> | Map<K, V>, f: some) {
 //   if (o instanceof Array) {
 //     if (f instanceof Function) {
 //       const [deleted, remained] = partition(o, f)
@@ -884,9 +884,9 @@ function reduce<A, V>(list: V[], accumulator: A, f: (accumulator: A, v: V, key: 
 function reduce<A, V, K>(map: Map<K, V>, accumulator: A, f: (accumulator: A, v: V, key: number) => A): A
 function reduce<A, V>(map: { [key: string]: V }, accumulator: A, f: (accumulator: A, v: V, key: string) => A): A
 function reduce<A, V>(
-  o: something, accumulator: A, f: (accumulator: A, v: V, key: something) => A
+  o: some, accumulator: A, f: (accumulator: A, v: V, key: some) => A
 ) {
-  each(o as something, (v: something, i) => accumulator = f(accumulator, v, i))
+  each(o as some, (v: some, i) => accumulator = f(accumulator, v, i))
   return accumulator
 }
 export { reduce }
@@ -898,8 +898,8 @@ function keys<V, K>(map: Map<K, V>): K[]
 // Adding `& string` because otherwise it would infer the type as `(string | number)[]`
 // see https://stackoverflow.com/questions/51808160/keyof-inferring-string-number-when-key-is-only-a-string
 function keys<T, O extends { [key: string]: T }>(map: O): (keyof O & string)[]
-function keys<T>(o: something) {
-  return reduce(o, [], (list: something, _v, k: something) => { list.push(k); return list })
+function keys<T>(o: some) {
+  return reduce(o, [], (list: some, _v, k: some) => { list.push(k); return list })
 }
 export { keys }
 
@@ -908,8 +908,8 @@ export { keys }
 function values<T>(list: T[]): T[]
 function values<T>(map: { [key: string]: T | undefined }): T[]
 function values<K, T>(map: Map<K, T>): T[]
-function values(o: something) {
-  return reduce(o, [], (list: something, v) => { list.push(v); return list })
+function values(o: some) {
+  return reduce(o, [], (list: some, v) => { list.push(v); return list })
 }
 export { values }
 
@@ -928,10 +928,10 @@ export function sum(list: number[]): number {
 // map ----------------------------------------------------------------------------
 // function map<T, R>(list: T[], f: (v: T, i: number) => R): R[]
 // function map<M extends {}, K extends keyof M, R>(map: M, f: (v: M[K], k: K) => R): { [key in K]: R }
-// function map<T, R>(o: T[] | { [key: string]: T }, f: (v: T, k: something) => R) {
+// function map<T, R>(o: T[] | { [key: string]: T }, f: (v: T, k: some) => R) {
 //   if (o instanceof Array) return o.map(f)
 //   else {
-//     const mapped = {} as something
+//     const mapped = {} as some
 //     each(o, (v, k) => mapped[k] = f(v, k))
 //     return mapped
 //   }
@@ -940,7 +940,7 @@ export function sum(list: number[]): number {
 function map<V, R>(list: V[], f: (v: V, i: number) => R): R[]
 function map<K, V, R>(map: Map<K, V>, f: (v: V, k: K) => R): Map<K, R>
 function map<M extends {}, K extends keyof M, R>(map: M, f: (v: M[K], k: K) => R): { [key in K]: R }
-function map<K, V, R>(o: something, f: (v: V, k: something) => R) {
+function map<K, V, R>(o: some, f: (v: V, k: some) => R) {
   if        (o instanceof Array) {
     return o.map(f)
   } else if (o instanceof Map) {
@@ -948,8 +948,8 @@ function map<K, V, R>(o: something, f: (v: V, k: something) => R) {
     each(o, (v, k) => mapped.set(k, f(v, k)))
     return mapped
   } else {
-    const mapped = {} as something
-    each(o, (v: something, k) => mapped[k] = f(v, k))
+    const mapped = {} as some
+    each(o, (v: some, k) => mapped[k] = f(v, k))
     return mapped
   }
 }
@@ -980,9 +980,9 @@ export function shuffle<T>(list: T[], random?: () => number): T[] {
 
 
 // debounce -----------------------------------------------------------------------
-export function debounce<F extends ((...args: something[]) => void)>(fn: F, timeout: number): F {
-  let timer: something = undefined
-  return ((...args: something[]) => {
+export function debounce<F extends ((...args: some[]) => void)>(fn: F, timeout: number): F {
+  let timer: some = undefined
+  return ((...args: some[]) => {
     if (timer) clearTimeout(timer)
     timer = setTimeout(() => fn(...args), timeout)
   }) as F
@@ -1005,7 +1005,7 @@ export class NeverError extends Error {
 
 
 // ensureError -------------------------------------------------------------------
-export function ensureError(error: something, defaultMessage = "Unknown error"): Error {
+export function ensureError(error: some, defaultMessage = "Unknown error"): Error {
   if (error && (typeof error == 'object') && (error instanceof Error)) {
     if (!error.message) error.message = defaultMessage
     return error
@@ -1018,14 +1018,14 @@ export function ensureError(error: something, defaultMessage = "Unknown error"):
 
 // Error.toJSON -------------------------------------------------------------------
 // Otherwise JSON will be empty `{}`
-;(Error.prototype as something).toJSON = function(this: something) {
+;(Error.prototype as some).toJSON = function(this: some) {
   return { message: this.message, stack: this.stack }
 }
 
 // Map.toJSON ---------------------------------------------------------------------
 // Otherwise JSON will be empty `{}`
-;(Map.prototype  as something).toJSON = function(this: something) {
-  return reduce(this, {}, (map: something, v, k) => { map[k] = v; return map })
+;(Map.prototype  as some).toJSON = function(this: some) {
+  return reduce(this, {}, (map: some, v, k) => { map[k] = v; return map })
 }
 
 
