@@ -728,24 +728,37 @@ export { sort }
 
 
 // sortBy -------------------------------------------------------------------------------
-function sortBy<V>(list: V[], by: (v: V) => string): V[]
-function sortBy<V>(list: V[], by: (v: V) => number): V[]
-function sortBy<V>(list: V[], by: (v: V) => string | number): V[] {
+function sortBy<V>(list: V[], by: (v: V) => string, order?: "asc" | "desc"): V[]
+function sortBy<V>(list: V[], by: (v: V) => number, order?: "asc" | "desc"): V[]
+function sortBy<V>(list: V[], by: (v: V) => boolean, order?: "asc" | "desc"): V[]
+function sortBy<V>(list: V[], by: (v: V) => string | number | boolean, order: "asc" | "desc" = "asc"): V[] {
   if (list.length == 0) return list
   else {
     let comparator: (a: V, b: V) => number
     if      (typeof by(list[0]) == 'number')
       comparator = function(a, b) { return (by(a) as number) - (by(b) as number) }
+    if      (typeof by(list[0]) == 'boolean')
+      comparator = function(a, b) { return (by(a) ? 1 : 0) - (by(b) ? 1 : 0) }
     else if (typeof by(list[0]) == 'string')
       comparator = function(a, b) { return (by(a) as string).localeCompare(by(b) as string) }
     else
       throw new Error(`invalid return type for 'by'`)
+
+    if (order == "desc") {
+      let ascComparator = comparator
+      comparator = (a, b) => ascComparator(b, a)
+    }
 
     list = [...list]
     list.sort(comparator)
     return list
   }
 }
+
+test("sortBy", () => {
+  assert.equal(sortBy([{ v: true }, { v: false }], ({v}) => v), [{ v: false }, { v: true }])
+})
+
 export { sortBy }
 
 
@@ -827,7 +840,7 @@ function pick(o: some, keys: (string | number)[]) {
 }
 export { pick }
 test("pick", () => {
-  assert.equal(pick({ a: 1, b: 2 }, ['a']), { a: 1 })
+  assert.equal(pick({ a: 1, b: 2 }, ['a']), { a: 1 } as some) // Not working in swelte
 })
 
 
