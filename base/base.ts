@@ -37,7 +37,7 @@ export function p(...args: some): void {
 // Test ---------------------------------------------------------------------
 const tests: { name: string, test: (() => void) | (() => Promise<void>) }[] = []
 let lastRunnedTest = 0, testingInProgress = false
-function runTests () {
+export function runTests () {
   if (testingInProgress) return
   testingInProgress = true
   setTimeout(async () => {
@@ -727,24 +727,24 @@ function sort<V>(list: V[], comparator?: (a: V, b: V) => number): V[] {
 export { sort }
 
 
-// sortBy -------------------------------------------------------------------------------
-function sortBy<V>(list: V[], by: (v: V) => string, order?: "asc" | "desc"): V[]
-function sortBy<V>(list: V[], by: (v: V) => number, order?: "asc" | "desc"): V[]
-function sortBy<V>(list: V[], by: (v: V) => boolean, order?: "asc" | "desc"): V[]
-function sortBy<V>(list: V[], by: (v: V) => string | number | boolean, order: "asc" | "desc" = "asc"): V[] {
+function sortBy<V>(list: V[], by: (v: V) => string, reverse?: boolean): V[]
+function sortBy<V>(list: V[], by: (v: V) => number, reverse?: boolean): V[]
+function sortBy<V>(list: V[], by: (v: V) => boolean, reverse?: boolean): V[]
+function sortBy<V>(list: V[], by: (v: V) => string | number | boolean, reverse = false): V[] {
   if (list.length == 0) return list
   else {
+    const type = typeof by(list[0])
     let comparator: (a: V, b: V) => number
-    if      (typeof by(list[0]) == 'number')
+    if      (type == 'number')
       comparator = function(a, b) { return (by(a) as number) - (by(b) as number) }
-    if      (typeof by(list[0]) == 'boolean')
+    else if (type == 'boolean')
       comparator = function(a, b) { return (by(a) ? 1 : 0) - (by(b) ? 1 : 0) }
-    else if (typeof by(list[0]) == 'string')
+    else if (type == 'string')
       comparator = function(a, b) { return (by(a) as string).localeCompare(by(b) as string) }
     else
-      throw new Error(`invalid return type for 'by'`)
+      throw new Error(`invalid return type for 'by' '${type}'`)
 
-    if (order == "desc") {
+    if (reverse) {
       let ascComparator = comparator
       comparator = (a, b) => ascComparator(b, a)
     }
