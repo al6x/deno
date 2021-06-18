@@ -51,13 +51,14 @@ export function runTests () {
       } catch (e) {
         console.error(`  test | ${name} failed`)
         console.error(e)
-        throw e
+        if (!isBrowser()) throw e
       }
     }
     // console.log(`  test | success`)
     testingInProgress = false
   }, 0)
 }
+(window as some).runTests = runTests
 
 let testEnabledS: string
 try   { testEnabledS = (getEnv("test") || "").toLowerCase() }
@@ -66,17 +67,13 @@ let slowTestEnabled = testEnabledS == "all"
 let testEnabled = slowTestEnabled || (testEnabledS == "true")
 
 export function test(name: string, test: (() => void) | (() => Promise<void>)) {
-  if (testEnabled || name.toLowerCase() == testEnabledS) {
-    tests.push({ name, test })
-    runTests()
-  }
+  tests.push({ name, test })
+  if (testEnabled || name.toLowerCase() == testEnabledS) runTests()
 }
 
 export function slowTest(name: string, test: (() => void) | (() => Promise<void>)) {
-  if (slowTestEnabled || name.toLowerCase() == testEnabledS) {
-    tests.push({ name, test })
-    runTests()
-  }
+  tests.push({ name, test })
+  if (slowTestEnabled || name.toLowerCase() == testEnabledS) runTests()
 }
 
 
@@ -429,13 +426,13 @@ export function parse1(r: RegExp, s: string): string {
 
 export function parse2(r: RegExp, s: string): [string, string] {
   const found = parse(r, s)
-  if (found.length != 2) throw new Error(`expected 1 match but found ${found.length}`)
+  if (found.length != 2) throw new Error(`expected 2 matches but found ${found.length}`)
   return [found[0], found[1]]
 }
 
 export function parse3(r: RegExp, s: string): [string, string, string] {
   const found = parse(r, s)
-  if (found.length != 3) throw new Error(`expected 1 match but found ${found.length}`)
+  if (found.length != 3) throw new Error(`expected 3 matches but found ${found.length}`)
   return [found[0], found[1], found[2]]
 }
 
@@ -483,6 +480,17 @@ export function isEmpty<T>(o: Array<T> | { [key: string]: T } | String | string)
 // trim --------------------------------------------------------------------------------------------
 export function trim(text: string): string { return text.replace(/^[\t\s\n]+|[\t\s\n]+$/g, '') }
 
+
+// dedent ------------------------------------------------------------------------------------------
+export function dedent(text: string): string {
+  text = text.replace(/^\n*/, "") // Replacing the first empty line
+  const match = parse(/^(\s+)/, text)
+  if (match.length == 0) return text
+  return text.replace(new RegExp("^\\s{" + match[0].length + "}", "gm"), "")
+}
+test("dedent", () => {
+  assert.equal(dedent("\n  a\n  b\n    c"), "a\nb\n  c")
+})
 
 // take ---------------------------------------------------------------------------
 function take<T>(s: string, n: number): string
@@ -577,16 +585,77 @@ function ensureFind<T>(
 export { ensureFind }
 
 
-// findIndex ----------------------------------------------------------------------------
-function findIndex<T>(list: T[], v: T): number | undefined
-function findIndex<T>(list: T[], f: (v: T, i: number) => boolean): number | undefined
-function findIndex<T>(list: T[], finder: T | ((v: T, i: some) => boolean)): number | undefined {
+// findi ----------------------------------------------------------------------------
+function findi<T>(list: T[], v: T): number
+function findi<T>(list: T[], f: (v: T, i: number) => boolean): number
+function findi<T>(list: T[], finder: T | ((v: T, i: some) => boolean)): number {
   const predicate = finder instanceof Function ? finder : (v: T) => v == finder
   for(let i = 0; i < list.length; i++) if (predicate(list[i], i)) return i
-  return undefined
+  return -1
 }
-export { findIndex }
+export { findi }
 
+
+// findi_min/max -----------------------------------------------------------------------------------
+function findiMin(list: number[]): number
+function findiMin<T>(list: T[], op: ((v: T) => number)): number
+function findiMin<T>(list: T[], op?: ((v: T) => number)): number {
+  op = op || ((v: some) => v)
+  if (list.length == 0) return -1
+  let min = op(list[0]), minI = 0
+  for(let i = 1; i < list.length; i++) {
+    let m = op(list[i])
+    if (m < min) {
+      min = m
+      minI = i
+    }
+  }
+  return minI
+}
+export { findiMin }
+
+function findiMax(list: number[]): number
+function findiMax<T>(list: T[], op: ((v: T) => number)): number
+function findiMax<T>(list: T[], op?: ((v: T) => number)): number {
+  op = op || ((v: some) => v)
+  if (list.length == 0) return -1
+  let min = op(list[0]), minI = 0
+  for(let i = 1; i < list.length; i++) {
+    let m = op(list[i])
+    if (m > min) {
+      min = m
+      minI = i
+    }
+  }
+  return minI
+}
+export { findiMax }
+
+
+// median --------------------------------------------------------------------------------
+export function median(values: number[], isSorted = false): number {
+  return quantile(values, .5, isSorted)
+  // if (values.length == 0 ) return 0
+  // values = [...values]
+  // values.sort(function(a, b) { return a-b })
+  // const half = Math.floor(values.length / 2)
+  // if (values.length % 2) return values[half]
+  // else                   return (values[half - 1] + values[half]) / 2.0
+}
+
+
+// quantile ------------------------------------------------------------------------------
+export function quantile(values: number[], q: number, isSorted = false): number {
+  const sorted = isSorted ? values : [...values].sort((a, b) => a - b)
+  const pos = (sorted.length - 1) * q
+  const base = Math.floor(pos)
+  const rest = pos - base
+  if (sorted[base + 1] !== undefined) {
+    return sorted[base] + rest * (sorted[base + 1] - sorted[base])
+  } else {
+    return sorted[base]
+  }
+}
 
 // findLastIndex -----------------------------------------------------------------------
 function findLastIndex<T>(list: T[], v: T): number | undefined
@@ -727,36 +796,40 @@ function sort<V>(list: V[], comparator?: (a: V, b: V) => number): V[] {
 export { sort }
 
 
+// sortBy -------------------------------------------------------------------------------
 function sortBy<V>(list: V[], by: (v: V) => string, reverse?: boolean): V[]
 function sortBy<V>(list: V[], by: (v: V) => number, reverse?: boolean): V[]
 function sortBy<V>(list: V[], by: (v: V) => boolean, reverse?: boolean): V[]
-function sortBy<V>(list: V[], by: (v: V) => string | number | boolean, reverse = false): V[] {
+function sortBy<V>(list: V[], by: (v: some) => some, reverse = false): V[] {
   if (list.length == 0) return list
   else {
     const type = typeof by(list[0])
     let comparator: (a: V, b: V) => number
-    if      (type == 'number')
-      comparator = function(a, b) { return (by(a) as number) - (by(b) as number) }
-    else if (type == 'boolean')
+    if      (type == 'number') {
+      comparator = function(a, b) { return by(a) - by(b) }
+    } else if (type == 'boolean') {
       comparator = function(a, b) { return (by(a) ? 1 : 0) - (by(b) ? 1 : 0) }
-    else if (type == 'string')
-      comparator = function(a, b) { return (by(a) as string).localeCompare(by(b) as string) }
-    else
+    } else if (type == 'string') {
+      comparator = function(a, b) { return by(a).localeCompare(by(b)) }
+    } else {
       throw new Error(`invalid return type for 'by' '${type}'`)
-
-    if (reverse) {
-      let ascComparator = comparator
-      comparator = (a, b) => ascComparator(b, a)
     }
 
-    list = [...list]
-    list.sort(comparator)
-    return list
+    let sorted: V[]
+    sorted = [...list]
+    sorted.sort(comparator)
+    if (reverse) sorted.reverse()
+    return sorted
   }
 }
 
 test("sortBy", () => {
   assert.equal(sortBy([{ v: true }, { v: false }], ({v}) => v), [{ v: false }, { v: true }])
+
+  assert.equal(
+    sortBy([{ v: "b" }, { v: "" }, { v: "c" }], ({v}) => v),
+    [{ v: "" }, { v: "b" }, { v: "c"}]
+  )
 })
 
 export { sortBy }
@@ -834,6 +907,7 @@ export function unique<V, Key>(list: Array<V>, toKey?: (v: V) => Key): Array<V> 
 
 // pick ---------------------------------------------------------------------------
 function pick<T>(list: T[], keys: number[]): T[]
+function pick<T, K extends keyof T>(list: T[], keys: K[]): T[]
 function pick<T extends {}, K extends keyof T>(map: T, k: K[]): Pick<T, K>
 function pick(o: some, keys: (string | number)[]) {
   return partition(o, (_v, i: some) => keys.includes(i))[0]
