@@ -6,7 +6,7 @@
 type some = any
 type OnMessage = (message: object) => void
 
-class PubSubClient {
+export class PubSubClient {
   private es?:     some
   private fullUrl: string
 

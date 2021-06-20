@@ -1,4 +1,5 @@
 // tsc --lib "es6,dom" --target es5 --module none ws/client/pubsub.ts
+// cp ws/client/pubsub.js plot/assets/api-v1/assets/pubsub.js
 var PubSubClient = /** @class */ (function () {
     function PubSubClient(url, topics, onmessage, increment_ms, max_reconnect_delay_ms) {
         if (increment_ms === void 0) { increment_ms = 500; }
