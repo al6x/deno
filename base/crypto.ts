@@ -1,6 +1,6 @@
 import { some } from "base/base.ts"
 import { encodeBase58, decodeBase58 } from "base/base58.js"
-import { createHash } from "https://deno.land/std/hash/mod.ts"
+import { createHash } from "./deps.ts"
 
 export function hash(data: number | string | Uint8Array | ArrayBuffer, algo: 'md5' | 'sha256'): string {
   if (typeof data == "number") data = '' + data

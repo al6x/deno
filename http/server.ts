@@ -4,8 +4,9 @@ import { toYyyyMmDdHhMmSs } from "base/time.ts"
 import { isProd } from "base/env.ts"
 import { say } from "base/bash.ts"
 import { assetFilePath } from "./util.ts"
-import { Application, Middleware, Context, HttpError, Router } from "https://deno.land/x/oak/mod.ts"
-import * as stdpath from "https://deno.land/std/path/mod.ts"
+import { escapeHtml, ensureSafeFsPath } from "./helpers.ts"
+import { Application, Middleware, Context, HttpError, Router } from "./deps.ts"
+import * as stdpath from "./deps.ts"
 
 export { HttpError, Context, Router }
 export type { Middleware }
@@ -104,7 +105,7 @@ export class HttpServer<HttpState> {
           ctx.response.body = `<!DOCTYPE html>
             <html>
               <body>
-                400 ${e.message}
+                400 ${escapeHtml(e.message)}
               </body>
             </html>`
         } else if (e instanceof Error) {
@@ -113,7 +114,8 @@ export class HttpServer<HttpState> {
           ctx.response.body = `<!DOCTYPE html>
             <html>
               <body>
-                500 - ${this.config.showErrors ? e.message : "Internal Server Error"}
+                <div>500 - ${this.config.showErrors ? escapeHtml(e.message) : "Internal Server Error"}</div>
+                ${this.config.showErrors && `<pre>${escapeHtml(e.stack)}</pre>`}
               </body>
             </html>`
         }
@@ -124,9 +126,10 @@ export class HttpServer<HttpState> {
   private buildAssetMiddleware(): Middleware<CtxBaseState> {
     const assetsPathPrefix = this.config.assetsPath + "/"
     return async (ctx, next) => {
-      const url = ctx.request.url
-      if(url.pathname.startsWith(assetsPathPrefix)) {
-        let found = await assetFilePath(url.pathname.replace(assetsPathPrefix, "/"), this.config.assetsFilePaths)
+      const url = ctx.request.url, path = url.pathname
+      if(path.startsWith(assetsPathPrefix)) {
+        ensureSafeFsPath(path)
+        let found = await assetFilePath(path.replace(assetsPathPrefix, "/"), this.config.assetsFilePaths)
         if (found.found) {
           await ctx.send({
             path: found.value, root: "/", immutable: this.config.cacheAssets

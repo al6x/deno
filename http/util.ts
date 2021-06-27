@@ -1,7 +1,7 @@
 import { p, test, assert, take, Found } from "base/base.ts"
 import * as fs from "base/fs.ts"
 import * as crypto from "base/crypto.ts"
-import * as stdpath from "https://deno.land/std/path/mod.ts"
+import * as stdpath from "./deps.ts"
 
 
 // assetHash ---------------------------------------------------------------------------------------

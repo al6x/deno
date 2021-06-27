@@ -2,7 +2,7 @@
 
 import { p, Errorneous, ensure } from "base/base.ts"
 import { PubSub } from "../pubsub.ts"
-import { Context, Application, Router } from "https://deno.land/x/oak/mod.ts"
+import { Context, Application, Router } from "../deps.ts"
 
 
 class TestPubSub extends PubSub {

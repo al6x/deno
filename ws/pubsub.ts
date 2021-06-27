@@ -1,6 +1,6 @@
 import { p, Errorneous, ensure, once } from "base/base.ts"
 import { Log } from "base/log.ts"
-import { ServerSentEventTarget, Context } from "https://deno.land/x/oak/mod.ts"
+import { ServerSentEventTarget, Context } from "./deps.ts"
 
 export abstract class PubSub {
   private readonly log: Log

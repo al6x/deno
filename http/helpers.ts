@@ -1,8 +1,17 @@
-import * as stdpath from "https://deno.land/std/path/mod.ts"
 import { p, test, assert, toJson } from "base/base.ts"
-import { Context } from "https://deno.land/x/oak/mod.ts"
+import { Context, HttpError } from "./deps.ts"
 import { assetHash } from "./util.ts"
 
+
+// isSafeFsPath ------------------------------------------------------------------------------------
+export function isSafeFsPath(path: string): boolean {
+  if (path.includes("..")) return false
+  return true
+}
+
+export function ensureSafeFsPath(path: string): void {
+  if (!isSafeFsPath(path)) throw new HttpError("invalid path!")
+}
 
 // escapeJs ----------------------------------------------------------------------------------------
 export function escapeJs(js: unknown): string {

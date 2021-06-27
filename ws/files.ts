@@ -3,7 +3,8 @@ import { Log } from "base/log.ts"
 import * as crypto from "base/crypto.ts"
 import * as fs from "base/fs.ts"
 import { Db, DbTable, sql } from "../db/db_table.ts"
-import { Context, FormDataReadOptions } from "https://deno.land/x/oak/mod.ts"
+import { HttpError } from "../http/server.ts"
+import { Context, FormDataReadOptions, getRandomFilename } from "./deps.ts"
 
 
 // Files -------------------------------------------------------------------------------------------
@@ -99,7 +100,13 @@ export class Files {
   }
 
   protected tmpDirCreated = false
-  buildUploadHandler(): (user_id: string, project_id: string, ctx: Context) => Promise<FileInfo[]> {
+  async ensureTmpDirCreated(): Promise<void> {
+    if (this.tmpDirCreated) return
+    await fs.createDirectory(this.tmpDir)
+    this.tmpDirCreated = true
+  }
+
+  buildMultipartUploadHandler(): (user_id: string, project_id: string, ctx: Context) => Promise<FileInfo[]> {
     const uploadOptions: FormDataReadOptions = {
       // The size of the buffer to read from the request body at a single time
       bufferSize:  262_144,
@@ -107,10 +114,7 @@ export class Files {
       outPath:     this.tmpDir      // Path to store temporary files, Deno.makeTempDir()
     }
     return async (user_id, project_id, ctx) => {
-      if (!this.tmpDirCreated) {
-        await fs.createDirectory(this.tmpDir)
-        this.tmpDirCreated = true
-      }
+      await this.ensureTmpDirCreated()
 
       const body = await ctx.request.body({ type: 'form-data'})
       const data = await body.value.read(uploadOptions)
@@ -121,6 +125,36 @@ export class Files {
       }
 
       return files
+    }
+  }
+
+  buildUploadHandler(): (user_id: string, project_id: string, ctx: Context) => Promise<FileInfo> {
+    const bufferSizeB = 262_144
+
+    return async (user_id, project_id, ctx) => {
+      await this.ensureTmpDirCreated()
+
+      const body = ctx.request.body({ type: "reader" }).value
+      let tmpFilePath: string | undefined, tmpFile: Deno.File | undefined
+      try {
+        tmpFilePath = `${this.tmpDir}/${getRandomFilename("upload_", "tmp")}`
+        tmpFile = await Deno.open(tmpFilePath, { write: true, createNew: true })
+
+        let n = 0, totalB = 0, buff = new Uint8Array(bufferSizeB)
+        do {
+          n = await body.read(buff) || 0
+          totalB += n
+          if (totalB > this.maxFileB) throw new HttpError("max file size limit exceeded")
+          await tmpFile.write(buff)
+        } while (n > 0)
+        await tmpFile.truncate(totalB)
+
+        const path = ctx.request.url.pathname
+        return await this.move(user_id, project_id, path, tmpFilePath)
+      } finally {
+        if (tmpFile) Deno.close(tmpFile.rid)
+        if (tmpFilePath) fs.remove(tmpFilePath)
+      }
     }
   }
 }
