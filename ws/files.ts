@@ -4,7 +4,7 @@ import * as crypto from "base/crypto.ts"
 import * as fs from "base/fs.ts"
 import { Db, DbTable, sql } from "../db/db_table.ts"
 import { HttpError } from "../http/server.ts"
-import { Context, FormDataReadOptions, getRandomFilename } from "./deps.ts"
+import { Context, FormDataReadOptions, getRandomFilename, writeAll } from "./deps.ts"
 
 
 // Files -------------------------------------------------------------------------------------------
@@ -142,12 +142,16 @@ export class Files {
 
         let n = 0, totalB = 0, buff = new Uint8Array(bufferSizeB)
         do {
+          // Deno.writeAll()
+          buff = buff.length < bufferSizeB ? new Uint8Array(bufferSizeB) : buff
           n = await body.read(buff) || 0
+          buff = n != buff.length ? buff.slice(0, n) : buff
+
           totalB += n
           if (totalB > this.maxFileB) throw new HttpError("max file size limit exceeded")
-          await tmpFile.write(buff)
+          await writeAll(tmpFile, buff)
         } while (n > 0)
-        await tmpFile.truncate(totalB)
+        // await tmpFile.truncate(totalB)
 
         const path = ctx.request.url.pathname
         return await this.move(user_id, project_id, path, tmpFilePath)
