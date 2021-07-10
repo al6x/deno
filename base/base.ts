@@ -1,6 +1,6 @@
-import { getEnv } from "./env.ts"
+import { getEnv } from "./env"
 
-export * from './map.ts'
+export * from './map'
 
 // Safe any ----------------------------------------------------------------------------------------
 export type something = any
@@ -35,27 +35,15 @@ export function p(...args: some): void {
 }
 
 // Test ---------------------------------------------------------------------
-const tests: { name: string, isSlow: boolean, test: (() => void) | (() => Promise<void>) }[] = []
+const tests: { name: string, test: (() => void) | (() => Promise<void>) }[] = []
 let lastRunnedTest = 0, testingInProgress = false
 export function runTests () {
   if (testingInProgress) return
   testingInProgress = true
-
-  let testEnabledAsLString: string
-  try   { testEnabledAsLString = (getEnv("test") || "").toLowerCase() }
-  catch { testEnabledAsLString = "false" }
-  const slowTestEnabled = testEnabledAsLString == "all"
-  const testEnabled = slowTestEnabled || (testEnabledAsLString == "true")
-
   setTimeout(async () => {
     while (lastRunnedTest < tests.length) {
-      let { name, isSlow, test } = tests[lastRunnedTest]
+      let { name, test } = tests[lastRunnedTest]
       lastRunnedTest += 1
-
-      // Checking if test enabled
-      const enabled = (isSlow ? slowTestEnabled : testEnabled) || name.toLowerCase() == testEnabledAsLString
-      if (!enabled) continue
-
       try {
         console.log(`  test | ${name}`)
         let promise = test()
@@ -67,20 +55,25 @@ export function runTests () {
       }
     }
     // console.log(`  test | success`)
-
     testingInProgress = false
   }, 0)
 }
 (window as some).runTests = runTests
 
+let testEnabledS: string
+try   { testEnabledS = (getEnv("test") || "").toLowerCase() }
+catch { testEnabledS = "false" }
+let slowTestEnabled = testEnabledS == "all"
+let testEnabled = slowTestEnabled || (testEnabledS == "true")
+
 export function test(name: string, test: (() => void) | (() => Promise<void>)) {
-  tests.push({ name, isSlow: false, test })
-  runTests()
+  tests.push({ name, test })
+  if (testEnabled || name.toLowerCase() == testEnabledS) runTests()
 }
 
 export function slowTest(name: string, test: (() => void) | (() => Promise<void>)) {
-  tests.push({ name, isSlow: true, test })
-  runTests()
+  tests.push({ name, test })
+  if (slowTestEnabled || name.toLowerCase() == testEnabledS) runTests()
 }
 
 
