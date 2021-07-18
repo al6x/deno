@@ -4,7 +4,7 @@ import { toYyyyMmDdHhMmSs } from "base/time.ts"
 import { isProd } from "base/env.ts"
 import { say } from "base/bash.ts"
 import { assetFilePath } from "./util.ts"
-import { escapeHtml, ensureSafeFsPath } from "./helpers.ts"
+import { escapeHtml, ensureSafeFsPath, cache_forever } from "./helpers.ts"
 import { Application, Middleware, Context, HttpError, Router } from "./deps.ts"
 import * as stdpath from "./deps.ts"
 
@@ -132,7 +132,7 @@ export class HttpServer<HttpState> {
         let found = await assetFilePath(path.replace(assetsPathPrefix, "/"), this.config.assetsFilePaths)
         if (found.found) {
           await ctx.send({
-            path: found.value, root: "/", immutable: this.config.cacheAssets
+            path: found.value, root: "/", ...(this.config.cacheAssets ? cache_forever() : {})
           })
         } else {
           ctx.throw(404, `Asset not found`)

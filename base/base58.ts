@@ -1,17 +1,18 @@
 // https://gist.github.com/diafygi/90a3e80ca1c2793220e5/
 
+type some = any
 const base58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
 export function encodeBase58(
-  B,          //Uint8Array raw byte input
+  B:  some,   //Uint8Array raw byte input
   A = base58  //Base58 characters (i.e. "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
 ) {
-  var d = [],   //the array for storing the stream of base58 digits
-      s = "",   //the result string variable that will be returned
-      i,        //the iterator variable for the byte input
-      j,        //the iterator variable for the base58 digit array (d)
-      c,        //the carry amount variable that is used to overflow from the current base58 digit to the next base58 digit
-      n;        //a temporary placeholder variable for the current base58 digit
+  var d: number[] = [], //the array for storing the stream of base58 digits
+      s = "",           //the result string variable that will be returned
+      i: some,          //the iterator variable for the byte input
+      j: some,          //the iterator variable for the base58 digit array (d)
+      c: some,          //the carry amount variable that is used to overflow from the current base58 digit to the next base58 digit
+      n: some;          //a temporary placeholder variable for the current base58 digit
   for(i in B) { //loop through each byte in the input stream
       j = 0,                           //reset the base58 digit iterator
       c = B[i];                        //set the initial carry amount equal to the current byte amount
@@ -31,15 +32,15 @@ export function encodeBase58(
 
 
 export function decodeBase58(
-  S,         //Base58 encoded string input
+  S :some,   //Base58 encoded string input
   A = base58 //Base58 characters (i.e. "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
 ) {
-  var d = [],   //the array for storing the stream of decoded bytes
-      b = [],   //the result byte array that will be returned
-      i,        //the iterator variable for the base58 string
-      j,        //the iterator variable for the byte array (d)
-      c,        //the carry amount variable that is used to overflow from the current byte to the next byte
-      n;        //a temporary placeholder variable for the current byte
+  var d: some[] = [], //the array for storing the stream of decoded bytes
+      b: some[] = [], //the result byte array that will be returned
+      i: some,        //the iterator variable for the base58 string
+      j: some,        //the iterator variable for the byte array (d)
+      c: some,        //the carry amount variable that is used to overflow from the current byte to the next byte
+      n: some;        //a temporary placeholder variable for the current byte
   for(i in S) { //loop through each base58 character in the input string
       j = 0,                             //reset the byte iterator
       c = A.indexOf( S[i] );             //set the initial carry amount equal to the current base58 digit

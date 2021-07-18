@@ -1,6 +1,6 @@
-import { getEnv } from "./env"
+import { getEnv } from "./env.ts"
 
-export * from './map'
+export * from './map.ts'
 
 // Safe any ----------------------------------------------------------------------------------------
 export type something = any

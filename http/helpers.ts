@@ -3,6 +3,10 @@ import { Context, HttpError } from "./deps.ts"
 import { assetHash } from "./util.ts"
 
 
+export function cache_forever() {
+  return { maxage: 31536000000 }
+}
+
 // isSafeFsPath ------------------------------------------------------------------------------------
 export function isSafeFsPath(path: string): boolean {
   if (path.includes("..")) return false

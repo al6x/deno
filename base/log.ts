@@ -1,7 +1,8 @@
 import { p, take, some, isEmpty, toJson } from "./base.ts"
 import { getEnv } from "./env.ts"
-import { red, yellow, gray as grey } from "./deps.ts"
+import { colors } from "./deps.ts"
 
+const { red, yellow, gray: grey } = colors
 
 export const logConfig = {
   log:         getEnv("log", "true") != "false",

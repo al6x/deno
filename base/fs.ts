@@ -1,6 +1,5 @@
 import { some, assert, p, ensureError, toJson } from './base.ts'
-import * as denoPath from 'https://deno.land/std/path/mod.ts'
-import * as denoFs from 'https://deno.land/std/fs/mod.ts'
+import * as deps from './deps.ts'
 
 export type EntryType = 'directory' | 'file' // | 'link'
 export type Entry = { type: EntryType, name: string }
@@ -68,9 +67,9 @@ async function writeFileImpl(
     Deno.writeFileSync(path, buffer, { append })
   } catch (e) {
     // Checking if parent dirs exists, creating it and retrying
-    const dirname = denoPath.dirname(path)
+    const dirname = deps.path.dirname(path)
     if (!await exists(dirname)) {
-      await denoFs.ensureDir(dirname)
+      await deps.fs.ensureDir(dirname)
       Deno.writeFileSync(path, buffer, { append })
     } else throw e
   }
@@ -87,9 +86,9 @@ export function writeFileSync(
     Deno.writeFileSync(path, buffer)
   } catch (e) {
     // Checking if parent dirs exists, creating it and retrying
-    const dirname = denoPath.dirname(path)
-    if (!denoFs.existsSync(dirname)) {
-      denoFs.ensureDirSync(dirname)
+    const dirname = deps.path.dirname(path)
+    if (!deps.fs.existsSync(dirname)) {
+      deps.fs.ensureDirSync(dirname)
       Deno.writeFileSync(path, buffer)
     } else throw e
   }
@@ -121,13 +120,13 @@ export async function move(from: string, to: string, options?: { overwrite?: boo
   options = options || {}
   const overwrite = 'overwrite' in options ? options.overwrite : false
   try {
-    await denoFs.move(from, to, { overwrite })
+    await deps.fs.move(from, to, { overwrite })
   } catch (e) {
     // Checking if parent dirs exists, creating it and retrying
-    const toDirname = denoPath.dirname(to)
+    const toDirname = deps.path.dirname(to)
     if (!await exists(toDirname)) {
-      await denoFs.ensureDir(toDirname)
-      await denoFs.move(from, to, { overwrite })
+      await deps.fs.ensureDir(toDirname)
+      await deps.fs.move(from, to, { overwrite })
     } else throw e
   }
 }
@@ -139,13 +138,13 @@ export async function copy(from: string, to: string, options?: { overwrite?: boo
   options = options || {}
   const overwrite = 'overwrite' in options ? options.overwrite : false
   try {
-    await denoFs.copy(from, to, { overwrite })
+    await deps.fs.copy(from, to, { overwrite })
   } catch (e) {
     // Checking if parent dirs exists, creating it and retrying
-    const toDirname = denoPath.dirname(to)
+    const toDirname = deps.path.dirname(to)
     if (!await exists(toDirname)) {
-      await denoFs.ensureDir(toDirname)
-      await denoFs.copy(from, to, { overwrite })
+      await deps.fs.ensureDir(toDirname)
+      await deps.fs.copy(from, to, { overwrite })
     } else throw e
   }
 }
@@ -153,15 +152,15 @@ export async function copy(from: string, to: string, options?: { overwrite?: boo
 
 // createDirectory --------------------------------------------------------------------------------
 // Creates parent directory automatically
-export async function createDirectory(path: string) { await denoFs.ensureDir(path) }
+export async function createDirectory(path: string) { await deps.fs.ensureDir(path) }
 
 
 // exists ------------------------------------------------------------------------------------------
-export async function exists(path: string): Promise<boolean> { return denoFs.exists(path) }
+export async function exists(path: string): Promise<boolean> { return deps.fs.exists(path) }
 
 
 // existsSync --------------------------------------------------------------------------------------
-export function existsSync(path: string): boolean { return denoFs.existsSync(path) }
+export function existsSync(path: string): boolean { return deps.fs.existsSync(path) }
 
 
 // isEmpty -----------------------------------------------------------------------------------------
@@ -190,7 +189,7 @@ export async function remove(
   }
 
   if (success && options.deleteEmptyParents) {
-    const dirname = denoPath.dirname(path)
+    const dirname = deps.path.dirname(path)
     if (await isEmpty(dirname)) {
       await remove(dirname, { deleteEmptyParents: true })
     }
