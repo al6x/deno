@@ -483,14 +483,16 @@ export function trim(text: string): string { return text.replace(/^[\t\s\n]+|[\t
 
 // dedent ------------------------------------------------------------------------------------------
 export function dedent(text: string): string {
-  text = text.replace(/^\n*/, "") // Replacing the first empty line
+  text = text.replace(/^\s*\n|[\n\s]+$/, "") // Replacing the first and last empty line
   const match = parse(/^(\s+)/, text)
   if (match.length == 0) return text
-  return text.replace(new RegExp("^\\s{" + match[0].length + "}", "gm"), "")
+  return text.split("\n").map((s) => s.startsWith(match[0]) ? s.replace(match[0], '') : s).join("\n")
+  // return text.replace(new RegExp("^\\s{" + match[0].length + "}", "gm"), "")
 }
 test("dedent", () => {
   assert.equal(dedent("\n  a\n  b\n    c"), "a\nb\n  c")
 })
+
 
 // take ---------------------------------------------------------------------------
 function take<T>(s: string, n: number): string
@@ -1067,11 +1069,16 @@ export function shuffle<T>(list: T[], random?: () => number): T[] {
 
 
 // debounce -----------------------------------------------------------------------
-export function debounce<F extends ((...args: some[]) => void)>(fn: F, timeout: number): F {
+export function debounce<F extends ((...args: some[]) => void)>(fn: F, timeout: number, immediate = false): F {
   let timer: some = undefined
   return ((...args: some[]) => {
-    if (timer) clearTimeout(timer)
-    timer = setTimeout(() => fn(...args), timeout)
+    if (immediate) {
+      immediate = false
+      fn(...args)
+    } else {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => fn(...args), timeout)
+    }
   }) as F
 }
 
@@ -1092,7 +1099,7 @@ export class NeverError extends Error {
 
 
 // ensureError -------------------------------------------------------------------
-export function ensureError(error: some, defaultMessage = "Unknown error"): Error {
+export function ensureError(error: unknown, defaultMessage = "Unknown error"): Error {
   if (error && (typeof error == 'object') && (error instanceof Error)) {
     if (!error.message) error.message = defaultMessage
     return error
