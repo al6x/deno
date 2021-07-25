@@ -1,6 +1,6 @@
-import { sleep, sec, something, mb, assert, p } from '../base/base.ts'
-import { Log } from '../base/log.ts'
-import * as fs from '../base/fs.ts'
+import { sleep, sec, something, mb, assert, p } from 'base/base.ts'
+import { Log } from 'base/log.ts'
+import * as fs from 'base/fs.ts'
 import { Page, PageOptions, to_page_options } from './parser.ts'
 import { driver, driver_default_import } from './deps.ts'
 

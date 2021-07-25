@@ -1,10 +1,10 @@
 import { p, assert, sleep, min, ensure_error, isEqual, something, shuffle, hour, day,
-  each, toJson, round, map} from '../base/base.ts'
-import { Log } from '../base/log.ts'
-import * as fs from '../base/fs.ts'
+  each, toJson, round, map} from 'base/base.ts'
+import { Log } from 'base/log.ts'
+import * as fs from 'base/fs.ts'
 import { Page } from "./parser.ts"
 import { Pool } from './pool.ts'
-import { PersistentVariable } from '../base/persistent-variable.ts'
+import { PersistentVariable } from 'base/persistent-variable.ts'
 
 
 // Defaults ------------------------------------------------------------------------------
