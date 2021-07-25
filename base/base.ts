@@ -221,7 +221,7 @@ export function buildUrl(
 }
 
 // sleep --------------------------------------------------------------------------
-export async function sleep(ms: number) {
+export async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
@@ -1098,8 +1098,8 @@ export class NeverError extends Error {
 }
 
 
-// ensureError -------------------------------------------------------------------
-export function ensureError(error: unknown, defaultMessage = "Unknown error"): Error {
+// ensure_error -------------------------------------------------------------------
+export function ensure_error(error: unknown, defaultMessage = "Unknown error"): Error {
   if (error && (typeof error == 'object') && (error instanceof Error)) {
     if (!error.message) error.message = defaultMessage
     return error

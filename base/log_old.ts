@@ -67,7 +67,7 @@ function logInDevelopment(
 
   // Printing error separately in development
   if (error) {
-    const cleanError = ensureError(error)
+    const cleanError = ensure_error(error)
     cleanError.stack = cleanStack(error.stack || '')
     console.log('')
     console.error(cleanError)

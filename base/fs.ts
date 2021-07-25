@@ -1,4 +1,4 @@
-import { some, assert, p, ensureError, toJson } from './base.ts'
+import { some, assert, p, ensure_error, toJson } from './base.ts'
 import * as deps from './deps.ts'
 
 export type EntryType = 'directory' | 'file' // | 'link'
@@ -6,22 +6,21 @@ export type Entry = { type: EntryType, name: string }
 
 
 // resolve -----------------------------------------------------------------------------------------
-// export function resolve(...paths: string[]): string { return denoPath.resolve(...paths) }
+export function resolve(...paths: string[]): string { return deps.path.resolve(...paths) }
 
 
 // readDirectory ----------------------------------------------------------------------------------
-// Use `Deno.readDir` as `denoFs.walk` is slow
-// export async function readDirectory(path: string, filter?: (entry: Entry) => boolean): Promise<Entry[]> {
-//   const entries: Entry[] = []
-//   for await (let entry of denoFs.walk(path, { maxDepth: 1 })) {
-//     let type: EntryType
-//     if (entry.isFile)           type = 'file'
-//     else if (entry.isDirectory) type = 'directory'
-//     else                        throw new Error("symlink type is not supported")
-//     entries.push({ type, name: entry.name }) // , path: denoPath.resolve(path, entry.name)
-//   }
-//   return filter ? entries.filter(filter) : entries
-// }
+export async function readDirectory(path: string, filter?: (entry: Entry) => boolean): Promise<Entry[]> {
+  const entries: Entry[] = []
+  for await (const entry of Deno.readDir(path)) {
+    let type: EntryType
+    if (entry.isFile)           type = 'file'
+    else if (entry.isDirectory) type = 'directory'
+    else                        throw new Error("todo symlink not implemented")
+    entries.push({ type, name: entry.name })
+  }
+  return filter ? entries.filter(filter) : entries
+}
 
 
 // readFile ---------------------------------------------------------------------------------------
@@ -116,11 +115,15 @@ export async function writeJson<T>(path: string, data: T) {
 
 // rename ------------------------------------------------------------------------------------------
 // Creates parent directories automatically for destination
-export async function move(from: string, to: string, options?: { overwrite?: boolean }) {
+export async function move(
+  from: string, to: string, options?: { overwrite?: boolean, deleteEmptyParents?: boolean }
+) {
   options = options || {}
   const overwrite = 'overwrite' in options ? options.overwrite : false
+  let success = false
   try {
     await deps.fs.move(from, to, { overwrite })
+    success = true
   } catch (e) {
     // Checking if parent dirs exists, creating it and retrying
     const toDirname = deps.path.dirname(to)
@@ -128,6 +131,13 @@ export async function move(from: string, to: string, options?: { overwrite?: boo
       await deps.fs.ensureDir(toDirname)
       await deps.fs.move(from, to, { overwrite })
     } else throw e
+  }
+
+  if (success && options.deleteEmptyParents) {
+    const dirname = deps.path.dirname(from)
+    if (await isEmpty(dirname)) {
+      await remove(dirname, { deleteEmptyParents: true })
+    }
   }
 }
 
@@ -199,7 +209,7 @@ export async function remove(
 
 // isTmpDirectory --------------------------------------------------------------------------------
 export function isTmpDirectory(path: string): boolean {
-  return /tmp|temp/i.test(path.toLowerCase())
+  return /tmp|temp|\/T\//i.test(path.toLowerCase())
 }
 export const notTmpDirectoryMessage = `temp directory expected to have 'tmp' or 'temp' term in its path`
 

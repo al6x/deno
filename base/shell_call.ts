@@ -1,4 +1,4 @@
-import { assert, ErrorneousU, some, p, ensureError, toJson } from './base.ts'
+import { assert, ErrorneousU, some, p, ensure_error, toJson } from './base.ts'
 
 const jsonOutputToken = "shell_call_jsonOutput:"
 export async function onShellCall<BeforeOutput>({ before, process, after } : {
@@ -14,7 +14,7 @@ export async function onShellCall<BeforeOutput>({ before, process, after } : {
   try {
     beforeOutput = { is_error: false, value: await before(data.before) }
   } catch (e) {
-    beforeOutput = { is_error: true, error: ensureError(e).message }
+    beforeOutput = { is_error: true, error: ensure_error(e).message }
   }
 
   // Processing
@@ -28,7 +28,7 @@ export async function onShellCall<BeforeOutput>({ before, process, after } : {
         let value = await process(beforeOutput.value, input)
         results.push({ is_error: false, value })
       } catch (e) {
-        results.push({ is_error: true, error: ensureError(e).message })
+        results.push({ is_error: true, error: ensure_error(e).message })
       }
     }
   }
@@ -37,7 +37,7 @@ export async function onShellCall<BeforeOutput>({ before, process, after } : {
   try {
     await after(beforeOutput.is_error ? undefined : beforeOutput.value, data.after) }
   catch (e) {
-    results = data.inputs.map(() => ({ is_error: true, error: ensureError(e).message }))
+    results = data.inputs.map(() => ({ is_error: true, error: ensure_error(e).message }))
   }
 
   // Writing result to STDOUT
