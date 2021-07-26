@@ -66,12 +66,14 @@ catch { testEnabledS = "false" }
 let slowTestEnabled = testEnabledS == "all"
 let testEnabled = slowTestEnabled || (testEnabledS == "true")
 
-export function test(name: string, test: (() => void) | (() => Promise<void>)) {
+export function test(name: string | { name: string }, test: (() => void) | (() => Promise<void>)) {
+  name = typeof name == 'string' ? name : name.name
   tests.push({ name, test })
   if (testEnabled || name.toLowerCase() == testEnabledS) runTests()
 }
 
-export function slowTest(name: string, test: (() => void) | (() => Promise<void>)) {
+export function slowTest(name: string | { name: string }, test: (() => void) | (() => Promise<void>)) {
+  name = typeof name == 'string' ? name : name.name
   tests.push({ name, test })
   if (slowTestEnabled || name.toLowerCase() == testEnabledS) runTests()
 }

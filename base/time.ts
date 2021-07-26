@@ -1,20 +1,20 @@
 import { some, take } from './base.ts'
 
 
-export function parseYyyyMmDd(yyyyMmDd: string): [number, number, number] {
+export function parse_yyyy_mm_dd(yyyyMmDd: string): [number, number, number] {
   assertYyyyMmDd(yyyyMmDd)
   const parts = yyyyMmDd.split('-').map((v: string) => parseInt(v))
   return parts as some
 }
 
-function toYyyyMmDd(timestamp: number): string
-function toYyyyMmDd(y: number, m: number, d: number): string
-function toYyyyMmDd(y: number, m?: number, d?: number): string {
+function to_yyyy_mm_dd(timestamp: number): string
+function to_yyyy_mm_dd(y: number, m: number, d: number): string
+function to_yyyy_mm_dd(y: number, m?: number, d?: number): string {
   if        (m === undefined && d === undefined) {
     const timestamp = y
     if (timestamp < 10000) throw new Error(`value for timestamp is too low, probably an error`)
     const date = new Date(timestamp)
-    return toYyyyMmDd(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate())
+    return to_yyyy_mm_dd(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate())
   } else if (m !== undefined && d !== undefined) {
     if (m < 0 || m > 12) throw new Error(`invalid month ${m}`)
     if (d < 0 || d > 31) throw new Error(`invalid day ${d}`)
@@ -23,10 +23,10 @@ function toYyyyMmDd(y: number, m?: number, d?: number): string {
     throw new Error(`invalid usage of toYyyyMmDd`)
   }
 }
-export { toYyyyMmDd }
+export { to_yyyy_mm_dd }
 
 
-export function toYyyyMmDdHhMmSs(time: number | Date): string {
+export function to_yyyy_mm_dd_hh_mm_ss(time: number | Date): string {
   const timestamp = time instanceof Date ? time.valueOf() : time
   if (timestamp < 10000) throw new Error(`value for timestamp is too low, probably an error`)
   const date = new Date(timestamp)
@@ -35,11 +35,11 @@ export function toYyyyMmDdHhMmSs(time: number | Date): string {
   return `${year}-${month < 10 ? '0' + month : month}-${day < 10 ? '0' + day : day}` +
     ` ${hour < 10 ? '0' + hour : hour}:${min < 10 ? '0' + min : min}:${sec < 10 ? '0' + sec : sec}`
 }
-export { toYyyyMmDdHhMmSs as formatTime }
+export { to_yyyy_mm_dd_hh_mm_ss as formatTime }
 
 
 export function yyyyMmToYm(yyyyMm: string): [number, number] {
-  assertYyyyMm(yyyyMm)
+  assert_yyyy_mm(yyyyMm)
   const parts = yyyyMm.split('-').map((v: string) => parseInt(v))
   return parts as some
 }
@@ -60,7 +60,7 @@ export function yyyyMmToM(yyyyMm: string, baseYear: number): number {
 
 
 export function mToYyyyMm(m: number, baseYear: number): string {
-  return toYyyyMm(baseYear + Math.floor(m / 12), 1 + (m % 12))
+  return to_yyyy_mm(baseYear + Math.floor(m / 12), 1 + (m % 12))
 }
 
 
@@ -76,7 +76,7 @@ export function yyyyMmDdToMs(yyyyMmDd: string): number {
 }
 
 
-export function assertYyyyMm(yyyyMm: string) {
+export function assert_yyyy_mm(yyyyMm: string) {
   if (!/\d\d\d\d-\d\d/.test(yyyyMm)) throw new Error(`date format is not yyyy-mm '${yyyyMm}'`)
 }
 
@@ -86,31 +86,31 @@ export function assertYyyyMmDd(yyyyMmDd: string) {
 }
 
 
-function toYyyyMm(timestamp: number): string
-function toYyyyMm(y: number, m: number): string
-function toYyyyMm(y: number, m?: number): string {
+function to_yyyy_mm(timestamp: number): string
+function to_yyyy_mm(y: number, m: number): string
+function to_yyyy_mm(y: number, m?: number): string {
   if (m === undefined) {
     const timestamp = y
     if (timestamp < 10000) throw new Error(`value for timestamp is too low, probably an error`)
     const date = new Date(timestamp)
-    return toYyyyMm(date.getUTCFullYear(), date.getUTCMonth() + 1)
+    return to_yyyy_mm(date.getUTCFullYear(), date.getUTCMonth() + 1)
   } else {
     if (m < 0 || m > 12) throw new Error(`invalid month ${m}`)
     return `${y}-${m < 10 ? '0' + m : m}`
   }
 }
-export { toYyyyMm }
+export { to_yyyy_mm }
 
 
 export function currentYyyyMm(): string {
   const now = new Date(Date.now())
-  return toYyyyMm(now.getUTCFullYear(), now.getUTCMonth() + 1)
+  return to_yyyy_mm(now.getUTCFullYear(), now.getUTCMonth() + 1)
 }
 
 
 export function currentYyyyMmDd(): string {
   const now = new Date(Date.now())
-  return toYyyyMmDd(now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate())
+  return to_yyyy_mm_dd(now.getUTCFullYear(), now.getUTCMonth() + 1, now.getUTCDate())
 }
 
 // parseMonth ---------------------------------------------------------------------------

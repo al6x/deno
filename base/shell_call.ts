@@ -1,7 +1,8 @@
 import { assert, ErrorneousU, some, p, ensure_error, toJson } from './base.ts'
+import { io } from './deps.ts'
 
-const jsonOutputToken = "shell_call_jsonOutput:"
-export async function onShellCall<BeforeOutput>({ before, process, after } : {
+const jsonOutputToken = "shell_call_json_output:"
+export async function on_shell_call<BeforeOutput>({ before, process, after } : {
   before:  (beforeInput: some) => Promise<BeforeOutput>,
   process: (beforeOputput: BeforeOutput, input: some) => Promise<some>,
   after:   (beforeOputput: BeforeOutput | undefined, afterInput: some) => Promise<void>
@@ -14,7 +15,7 @@ export async function onShellCall<BeforeOutput>({ before, process, after } : {
   try {
     beforeOutput = { is_error: false, value: await before(data.before) }
   } catch (e) {
-    beforeOutput = { is_error: true, error: ensure_error(e).message }
+    beforeOutput = { is_error: true, message: ensure_error(e).message }
   }
 
   // Processing
@@ -28,7 +29,7 @@ export async function onShellCall<BeforeOutput>({ before, process, after } : {
         let value = await process(beforeOutput.value, input)
         results.push({ is_error: false, value })
       } catch (e) {
-        results.push({ is_error: true, error: ensure_error(e).message })
+        results.push({ is_error: true, message: ensure_error(e).message })
       }
     }
   }
@@ -42,6 +43,6 @@ export async function onShellCall<BeforeOutput>({ before, process, after } : {
 
   // Writing result to STDOUT
   const message = jsonOutputToken + toJson(results)
-  await Deno.stdout.write((new TextEncoder()).encode(message))
+  await io.writeAll(Deno.stdout, (new TextEncoder()).encode(message))
   Deno.exit()
 }

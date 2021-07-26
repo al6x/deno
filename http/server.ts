@@ -1,6 +1,6 @@
 import { p, take, some } from "base/base.ts"
 import { Log } from "base/log.ts"
-import { toYyyyMmDdHhMmSs } from "base/time.ts"
+import { to_yyyy_mm_dd_hh_mm_ss } from "base/time.ts"
 import { isProd } from "base/env.ts"
 import { say } from "base/bash.ts"
 import { assetFilePath } from "./util.ts"
@@ -80,7 +80,7 @@ export class HttpServer<HttpState> {
             method,
             method4: take(method, 4).padEnd(4, " "),
             path:    ctx.request.url.pathname,
-            time:    toYyyyMmDdHhMmSs(new Date())
+            time:    to_yyyy_mm_dd_hh_mm_ss(new Date())
           })
         ctx.state.log = log
       }

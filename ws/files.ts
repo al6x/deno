@@ -4,7 +4,8 @@ import * as crypto from "base/crypto.ts"
 import * as fs from "base/fs.ts"
 import { Db, DbTable, sql } from "../db/db_table.ts"
 import { HttpError } from "../http/server.ts"
-import { Context, FormDataReadOptions, getRandomFilename, writeAll } from "./deps.ts"
+import { io } from "base/deps.ts"
+import { Context, FormDataReadOptions, getRandomFilename } from "./deps.ts"
 
 
 // Files -------------------------------------------------------------------------------------------
@@ -149,7 +150,7 @@ export class Files {
 
           totalB += n
           if (totalB > this.maxFileB) throw new HttpError("max file size limit exceeded")
-          await writeAll(tmpFile, buff)
+          await io.writeAll(tmpFile, buff)
         } while (n > 0)
         // await tmpFile.truncate(totalB)
 

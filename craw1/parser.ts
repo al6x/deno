@@ -1,8 +1,6 @@
 import { assert, p, something, sleep, ensure_error } from 'base/base.ts'
 import { Log } from 'base/log.ts'
 import * as fs from 'base/fs.ts'
-// import * as puppeteer from 'puppeteer'
-// import { Browser, Page, ElementHandle, Serializable, Frame, FrameBase } from 'puppeteer'
 import { block_urls } from './helpers.ts'
 import { driver } from "./deps.ts"
 
@@ -149,7 +147,7 @@ export class Page extends AbstractFrame {
     const tmp_download_dir = fs.resolve(this.options.tmp_dir, `tmp-${('' + Math.random()).replace(/.*\./, '')}`)
     await fs.createDirectory(tmp_download_dir)
 
-    await (this.frame as something)._client.send('Page.setDownloadBehavior', {
+    await this.frame._frameManager._client.send('Page.setDownloadBehavior', {
       behavior:     'allow',
       downloadPath: tmp_download_dir,
     })

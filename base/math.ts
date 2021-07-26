@@ -1,4 +1,4 @@
-import { assert, test, sortBy, round, fill, filterMap, findIndex, p } from './base.ts'
+import { assert, test, sortBy, round, fill, filterMap, findi, p } from './base.ts'
 
 
 // median --------------------------------------------------------------------------------
@@ -61,7 +61,7 @@ export function mapWithRank<V, R>(list: V[], orderBy: (v: V) => number, map: (v:
   const originalWithRank = sortBy(sortedWithRank, ({ originalI }) => originalI)
   return originalWithRank.map(({ v, rank }) => map(v, rank))
 }
-test(() => {
+test(mapWithRank, () => {
   assert.equal(
     mapWithRank(
       [ 4,        2,        3,        4,        5,        7,        5], (v) => v, (v, r) => [v, r]
@@ -142,7 +142,7 @@ export function differentiate(sparceValues: (number | undefined)[]): (number | u
   assert(diffs[0] === undefined, `first element of diff serie should always be undefined`)
   return diffs
 }
-test(() => {
+test(differentiate, () => {
   const u = undefined
   assert.equal(differentiate([
     u,   1,   u,   u,   8,   u,   u,   1, u
@@ -182,7 +182,7 @@ test(() => {
 export function integrate(diffs: (number | undefined)[], base = 1): (number | undefined)[] {
   assert(diffs[0] === undefined, `first element of diff serie should always be undefined`)
   const values = fill<number | undefined>(diffs.length, undefined)
-  const firstDefinedI = findIndex(diffs, (v) => v !== undefined)
+  const firstDefinedI = findi(diffs, (v) => v !== undefined)
   if (!firstDefinedI) throw new Error(`the whole diffs serie is undefined`)
   values[firstDefinedI - 1] = base
   for (let i = firstDefinedI; i < diffs.length - 1; i++) {
@@ -194,7 +194,7 @@ export function integrate(diffs: (number | undefined)[], base = 1): (number | un
   }
   return values
 }
-test(() => {
+test(integrate, () => {
   const u = undefined
   assert.equal(integrate([
     u,   u,   2,   2,   2, 0.5, 0.5, 0.5, u
