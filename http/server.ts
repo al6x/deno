@@ -1,7 +1,6 @@
-import { p, take } from "base/base.ts"
+import "base/base.ts"
 import { Log } from "base/log.ts"
 import { to_yyyy_mm_dd_hh_mm_ss } from "base/time.ts"
-import { isProd } from "base/env.ts"
 import { say } from "base/bash.ts"
 import { assetFilePath } from "./util.ts"
 import { escapeHtml, ensureSafeFsPath, cache_forever } from "./helpers.ts"
@@ -32,10 +31,10 @@ interface ServerConfig {
 function defaultConfig(): ServerConfig { return {
   // host:            "localhost",
   port:            8080,
-  showErrors:      !isProd(),
+  showErrors:      !is_prod(),
   assetsPath:      "/assets",
   assetsFilePaths: [stdpath.join(Deno.cwd(), "/assets")],
-  cacheAssets:     isProd(),
+  cacheAssets:     is_prod(),
   maxFileSize:     10_000_000, // 10 Mb
   voice:           true,
   allowFavicon:    false
@@ -78,7 +77,7 @@ export class HttpServer<HttpState> {
         log = this.log
           .with({
             method,
-            method4: take(method, 4).padEnd(4, " "),
+            method4: method.take(4).padEnd(4, " "),
             path:    ctx.request.url.pathname,
             time:    to_yyyy_mm_dd_hh_mm_ss(new Date())
           })
@@ -130,7 +129,7 @@ export class HttpServer<HttpState> {
       if(path.startsWith(assetsPathPrefix)) {
         ensureSafeFsPath(path)
         let found = await assetFilePath(path.replace(assetsPathPrefix, "/"), this.config.assetsFilePaths)
-        if (found.found) {
+        if (!found.is_error) {
           await ctx.send({
             path: found.value, root: "/", ...(this.config.cacheAssets ? cache_forever() : {})
           })

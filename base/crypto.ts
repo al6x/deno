@@ -1,4 +1,4 @@
-import { some } from "base/base.ts"
+import "base/base.ts"
 import { encodeBase58, decodeBase58 } from "base/base58.ts"
 import * as deps from "./deps.ts"
 
@@ -20,7 +20,7 @@ export function secureRandomHash(lengthB = 32): string {
 }
 
 export async function fileHash(path: string, algo: 'md5' | 'sha256'): Promise<string> {
-  let file: some
+  let file: any
   try {
     file = await Deno.open(path)
     const hash = deps.hash.createHash(algo)

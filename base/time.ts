@@ -1,10 +1,10 @@
-import { some, take } from './base.ts'
+import './base.ts'
 
 
 export function parse_yyyy_mm_dd(yyyyMmDd: string): [number, number, number] {
   assertYyyyMmDd(yyyyMmDd)
   const parts = yyyyMmDd.split('-').map((v: string) => parseInt(v))
-  return parts as some
+  return parts as any
 }
 
 function to_yyyy_mm_dd(timestamp: number): string
@@ -41,14 +41,14 @@ export { to_yyyy_mm_dd_hh_mm_ss as formatTime }
 export function yyyyMmToYm(yyyyMm: string): [number, number] {
   assert_yyyy_mm(yyyyMm)
   const parts = yyyyMm.split('-').map((v: string) => parseInt(v))
-  return parts as some
+  return parts as any
 }
 
 
 export function yyyyMmDdToYmd(yyyyMmDd: string): [number, number, number] {
   assertYyyyMmDd(yyyyMmDd)
   const parts = yyyyMmDd.split('-').map((v: string) => parseInt(v))
-  return parts as some
+  return parts as any
 }
 
 
@@ -132,7 +132,7 @@ const monthNames = [
 
   'december'
 ]
-const shortMonthNames = monthNames.map((name) => take(name, 3))
+const shortMonthNames = monthNames.map((name) => name.take(3))
 
 const monthNamesMap = new Map<string, number>()
 const shortMonthNamesMap = new Map<string, number>()

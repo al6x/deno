@@ -1,4 +1,4 @@
-import { assert, p, something, sleep, ensure_error } from 'base/base.ts'
+import 'base/base.ts'
 import { Log } from 'base/log.ts'
 import * as fs from 'base/fs.ts'
 import { block_urls } from './helpers.ts'
@@ -71,7 +71,7 @@ export abstract class AbstractFrame {
     fn: (input: Input) => Output, input: Input
   ): Promise<Output>
   async evaluate<Output>(fn: () => Output): Promise<Output>
-  async evaluate(fn: something, input?: something) { return this.frame.evaluate(fn, input) }
+  async evaluate(fn: any, input?: any) { return this.frame.evaluate(fn, input) }
 
   url(): string { return '' + this.frame.url() }
 }
@@ -145,7 +145,7 @@ export class Page extends AbstractFrame {
   async save_as_file(path: string, callback: () => Promise<void>, abort?: IsDownloadAborted): Promise<void> {
     // Creating tmp dir
     const tmp_download_dir = fs.resolve(this.options.tmp_dir, `tmp-${('' + Math.random()).replace(/.*\./, '')}`)
-    await fs.createDirectory(tmp_download_dir)
+    await fs.create_dir(tmp_download_dir)
 
     await this.frame._frameManager._client.send('Page.setDownloadBehavior', {
       behavior:     'allow',
@@ -161,7 +161,7 @@ export class Page extends AbstractFrame {
     while (!file_name || file_name.endsWith('.crdownload')) {
       if ((Date.now() - started) > this.options.timeout_ms) throw new Error(`download timed out`)
       await sleep(50)
-      file_name = (await fs.readDirectory(tmp_download_dir))[0]?.name
+      file_name = (await fs.read_dir(tmp_download_dir))[0]?.name
       if (abort) {
         const aborted = await abort(this)
         if (aborted.aborted) throw new Error(aborted.reason || 'download aborted')
@@ -170,12 +170,12 @@ export class Page extends AbstractFrame {
 
     // Renaming downloaded file
     const tmpFilePath = fs.resolve(tmp_download_dir, file_name)
-    assert((await fs.getType(tmpFilePath)) == 'file', `download '${tmpFilePath}' is not a file`)
+    assert((await fs.get_type(tmpFilePath)) == 'file', `download '${tmpFilePath}' is not a file`)
     await fs.move(tmpFilePath, path, { overwrite: true })
     this.log.debug(`file saved as ${path}`)
 
     // Cleaning tmp dir
-    await fs.removeTmpDirectory(tmp_download_dir)
+    await fs.remove_mp_dir(tmp_download_dir)
   }
 
   async download({ url }: { url: string }): Promise<void> {
@@ -245,7 +245,7 @@ export class Page extends AbstractFrame {
       const url = new URL(response.url())
       const file_path = fs.resolve(path,
         url.pathname.slice(0, 255).replace(/^\//, '').replace(/[^a-z0-9\-\.]/gi, '-'))
-      await fs.writeFile(file_path, new Uint8Array(await response.arrayBuffer()))
+      await fs.write_file(file_path, new Uint8Array(await response.arrayBuffer()))
     })
   }
 
@@ -260,7 +260,7 @@ export class Page extends AbstractFrame {
     while (true) {
       const unresolved_result = condition()
       const result = unresolved_result instanceof Promise ? await unresolved_result : unresolved_result
-      if (result !== false) return result as something
+      if (result !== false) return result as any
 
       const now = Date.now()
       if ((now - started) > this.options.timeout_ms) throw new Error("waitUntil timed out")
@@ -282,11 +282,11 @@ export class Page extends AbstractFrame {
     const started = Date.now()
     let delay = 10
     while (true) {
-      let _e: something = undefined
+      let _e: any = undefined
       try {
         const unresolved_result = condition()
         const result = unresolved_result instanceof Promise ? await unresolved_result : unresolved_result
-        if (result !== false) return result as something
+        if (result !== false) return result as any
       } catch (e) { _e = e }
 
       const now = Date.now()
@@ -305,11 +305,11 @@ export class Page extends AbstractFrame {
   async try_until(action: () => Promise<void>, condition: () => Promise<boolean>, delay_ms: number): Promise<void> {
     const started = Date.now()
     while (true) {
-      let _e: something = undefined
+      let _e: any = undefined
       try {
         await action()
         const result = await condition()
-        if (result) return result as something
+        if (result) return result as any
       } catch (e) { _e = e }
 
       const now = Date.now()
@@ -419,10 +419,10 @@ export class PElement {
   }
 
   async evaluate<Input extends driver.Serializable, Output>(
-    fn: (element: something, input: Input) => Output, input: Input
+    fn: (element: any, input: Input) => Output, input: Input
   ): Promise<Output>
-  async evaluate<Output>(fn: (element: something) => Output): Promise<Output>
-  async evaluate(fn: something, input?: something) { return this.frame.evaluate(fn, this.handle, input) }
+  async evaluate<Output>(fn: (element: any) => Output): Promise<Output>
+  async evaluate(fn: any, input?: any) { return this.frame.evaluate(fn, this.handle, input) }
 }
 
 

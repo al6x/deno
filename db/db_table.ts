@@ -1,4 +1,4 @@
-import { p, some, assert, ensure, slowTest } from "base/base.ts"
+import "base/base.ts"
 import { Log } from "base/log.ts"
 import { sql, SQL, sqlToString, buildWhere, Where } from "./sql.ts"
 import { Db } from "./db.ts"
@@ -175,7 +175,7 @@ function defaultWhereLog(sql: SQL, msg: string): (log: Log) => void {
 
 // Test --------------------------------------------------------------------------------------------
 // test=DbTable deno run --import-map=import_map.json --unstable --allow-all db/db_table.ts
-slowTest("DbTable", async () => {
+slow_test("DbTable", async () => {
   // Will connect lazily and reconnected in case of connection error
   const db = new Db("deno_unit_tests")
 

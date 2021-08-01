@@ -1,4 +1,4 @@
-import { p, some, assert, keys, slowTest } from "base/base.ts"
+import "base/base.ts"
 import { Log } from "base/log.ts"
 import { PgUrl, parsePgUrl, decode, encode } from "./utils.ts"
 import { sql, SQL, sqlToString } from "./sql.ts"
@@ -12,7 +12,7 @@ import { formatTime } from "base/time.ts"
 import { parseNotice } from "postgres/connection/warning.ts"
 import { Connection } from "postgres/connection/connection.ts"
 
-(Connection.prototype as some).processNotice = function(msg: some): some {
+(Connection.prototype as any).processNotice = function(msg: any): any {
   return parseNotice(msg)
 }
 
@@ -201,7 +201,7 @@ async exec(sql: SQL, log?: LogFn): Promise<void> {
     const allKeys = Object.keys(row)
     if (allKeys.length > 1) throw new Error(`expected single value in row but got ${allKeys.length} columns`)
     if (allKeys.length < 1) return undefined
-    return (row as some)[allKeys[0]]
+    return (row as any)[allKeys[0]]
   }
 
   async getValue<T extends DbValue>(sql: SQL, log?: LogFn): Promise<T> {
@@ -210,7 +210,7 @@ async exec(sql: SQL, log?: LogFn): Promise<void> {
     const allKeys = Object.keys(row)
     if (allKeys.length > 1) throw new Error(`expected single value in row but got ${allKeys.length} columns`)
     if (allKeys.length < 1) throw new Error(`expected single value in row but got nothing`)
-    return (row as some)[allKeys[0]]
+    return (row as any)[allKeys[0]]
   }
 
   private createPool(): Pool {
@@ -231,7 +231,7 @@ export type LogFn = ((log: Log) => void) | string | undefined
 
 // Test --------------------------------------------------------------------------------------------
 // test=Db deno run --import-map=import_map.json --unstable --allow-all db/db.ts
-slowTest("Db", async () => {
+slow_test("Db", async () => {
   // Will be connected lazily and reconnect in case of connection error
   const db = new Db("deno_unit_tests")
 

@@ -1,4 +1,4 @@
-import { p, Errorneous, ensure, once } from "base/base.ts"
+import "base/base.ts"
 import { Log } from "base/log.ts"
 import { ServerSentEventTarget, Context } from "./deps.ts"
 
@@ -61,7 +61,7 @@ export abstract class PubSub {
     }
   }
 
-  abstract authorise(ctx: Context): Errorneous<{ user_id: string, session_id: string, topics: string[] }>
+  abstract authorise(ctx: Context): E<{ user_id: string, session_id: string, topics: string[] }>
   // {
   //   const query = new URLSearchParams(ctx.request.url.search)
   //   const topics = (query.get("topics") || "").split(",")
@@ -108,7 +108,7 @@ export abstract class PubSub {
   handle = (ctx: Context): void => {
     // Authorising request
     const parsed = this.authorise(ctx)
-    if (parsed.isError) {
+    if (parsed.is_error) {
       this.log.with({ url: ctx.request.url.toString() }).warn("not authorised, {url}")
       return ctx.throw(400, parsed.message)
     }

@@ -1,4 +1,4 @@
-import { some, assert, p, ensure_error, toJson } from './base.ts'
+import './base.ts'
 import * as deps from './deps.ts'
 
 export type EntryType = 'directory' | 'file' // | 'link'
@@ -9,8 +9,8 @@ export type Entry = { type: EntryType, name: string }
 export function resolve(...paths: string[]): string { return deps.path.resolve(...paths) }
 
 
-// readDirectory ----------------------------------------------------------------------------------
-export async function readDirectory(path: string, filter?: (entry: Entry) => boolean): Promise<Entry[]> {
+// read_dir ----------------------------------------------------------------------------------
+export async function read_dir(path: string, filter?: (entry: Entry) => boolean): Promise<Entry[]> {
   const entries: Entry[] = []
   for await (const entry of Deno.readDir(path)) {
     let type: EntryType
@@ -23,63 +23,59 @@ export async function readDirectory(path: string, filter?: (entry: Entry) => boo
 }
 
 
-// readFile ---------------------------------------------------------------------------------------
-function readFile(path: string): Promise<Uint8Array>
-function readFile(path: string, options: { encoding: string }): Promise<string>
-async function readFile(path: string, options?: some) {
+// read_file ---------------------------------------------------------------------------------------
+function read_file(path: string): Promise<Uint8Array>
+function read_file(path: string, options: { encoding: string }): Promise<string>
+async function read_file(path: string, options?: any) {
   const buffer = await Deno.readFile(path)
   if (options) {
     const decoder = new TextDecoder(options.encoding)
     return decoder.decode(buffer)
   } else return buffer
 }
-export { readFile }
+export { read_file }
 
 
-// readFileSync ----------------------------------------------------------------------------------
-function readFileSync(path: string): Uint8Array
-function readFileSync(path: string, options: { encoding: string }): string
-function readFileSync(path: string, options?: some) {
+// read_file_sync ----------------------------------------------------------------------------------
+function read_file_sync(path: string): Uint8Array
+function read_file_sync(path: string, options: { encoding: string }): string
+function read_file_sync(path: string, options?: any) {
   const buffer = Deno.readFileSync(path)
   if (options) {
     const decoder = new TextDecoder(options.encoding)
     return decoder.decode(buffer)
   } else return buffer
 }
-export { readFileSync }
+export { read_file_sync }
 
 
-// writeFile --------------------------------------------------------------------------------------
+// write_file --------------------------------------------------------------------------------------
 // Creates parent directories if they aren't existing
-export async function writeFile(
-  path:     string,
-  data:     string | Uint8Array
-) { return writeFileImpl(path, data, false) }
+export async function write_file(path: string, data: string | Uint8Array): Promise<void> {
+  return write_file_impl(path, data, false)
+}
 
-async function writeFileImpl(
+async function write_file_impl(
   path:   string,
   data:   string | Uint8Array,
   append: boolean
-) {
+): Promise<void> {
   let buffer: Uint8Array = data instanceof Uint8Array ? data : (new TextEncoder()).encode(data)
   try {
-    Deno.writeFileSync(path, buffer, { append })
+    await Deno.writeFile(path, buffer, { append })
   } catch (e) {
     // Checking if parent dirs exists, creating it and retrying
     const dirname = deps.path.dirname(path)
     if (!await exists(dirname)) {
       await deps.fs.ensureDir(dirname)
-      Deno.writeFileSync(path, buffer, { append })
+      await Deno.writeFile(path, buffer, { append })
     } else throw e
   }
 }
 
 
-// writeFileSync ---------------------------------------------------------------------------------
-export function writeFileSync(
-  path:     string,
-  data:     string | Uint8Array
-): void {
+// write_file_sync ---------------------------------------------------------------------------------
+export function write_file_sync(path: string, data: string | Uint8Array): void {
   let buffer: Uint8Array = data instanceof Uint8Array ? data : (new TextEncoder()).encode(data)
   try {
     Deno.writeFileSync(path, buffer)
@@ -99,18 +95,18 @@ export function writeFileSync(
 export async function appendToFile(
   path:     string,
   data:     string | Uint8Array
-) { writeFileImpl(path, data, true) }
+) { write_file_impl(path, data, true) }
 
 
-// readJson ---------------------------------------------------------------------------------------
-export async function readJson<T = some>(path: string): Promise<T> {
-  return JSON.parse(await readFile(path, { encoding: 'utf8' }))
+// read_json ---------------------------------------------------------------------------------------
+export async function read_json<T = any>(path: string): Promise<T> {
+  return JSON.parse(await read_file(path, { encoding: 'utf8' }))
 }
 
 
-// writeJson --------------------------------------------------------------------------------------
-export async function writeJson<T>(path: string, data: T) {
-  await writeFile(path, toJson(data))
+// write_json --------------------------------------------------------------------------------------
+export async function write_json<T>(path: string, data: T) {
+  await write_file(path, to_json(data))
 }
 
 // rename ------------------------------------------------------------------------------------------
@@ -135,7 +131,7 @@ export async function move(
 
   if (success && options.deleteEmptyParents) {
     const dirname = deps.path.dirname(from)
-    if (await isEmpty(dirname)) {
+    if (await is_empty(dirname)) {
       await remove(dirname, { deleteEmptyParents: true })
     }
   }
@@ -160,21 +156,21 @@ export async function copy(from: string, to: string, options?: { overwrite?: boo
 }
 
 
-// createDirectory --------------------------------------------------------------------------------
+// create_dir --------------------------------------------------------------------------------
 // Creates parent directory automatically
-export async function createDirectory(path: string) { await deps.fs.ensureDir(path) }
+export async function create_dir(path: string) { await deps.fs.ensureDir(path) }
 
 
 // exists ------------------------------------------------------------------------------------------
 export async function exists(path: string): Promise<boolean> { return deps.fs.exists(path) }
 
 
-// existsSync --------------------------------------------------------------------------------------
-export function existsSync(path: string): boolean { return deps.fs.existsSync(path) }
+// exists_sync --------------------------------------------------------------------------------------
+export function exists_sync(path: string): boolean { return deps.fs.existsSync(path) }
 
 
-// isEmpty -----------------------------------------------------------------------------------------
-export async function isEmpty(path: string): Promise<boolean> {
+// is_empty -----------------------------------------------------------------------------------------
+export async function is_empty(path: string): Promise<boolean> {
   for await (let _entry of Deno.readDir(path)) {
     return false
   }
@@ -200,36 +196,36 @@ export async function remove(
 
   if (success && options.deleteEmptyParents) {
     const dirname = deps.path.dirname(path)
-    if (await isEmpty(dirname)) {
+    if (await is_empty(dirname)) {
       await remove(dirname, { deleteEmptyParents: true })
     }
   }
 }
 
 
-// isTmpDirectory --------------------------------------------------------------------------------
-export function isTmpDirectory(path: string): boolean {
+// is_tmp_dir --------------------------------------------------------------------------------
+export function is_tmp_dir(path: string): boolean {
   return /tmp|temp|\/T\//i.test(path.toLowerCase())
 }
 export const notTmpDirectoryMessage = `temp directory expected to have 'tmp' or 'temp' term in its path`
 
 
 // delete_tmp_directory ----------------------------------------------------------------------------
-export async function removeTmpDirectory(path: string) {
+export async function remove_mp_dir(path: string) {
   // Checking if it's tmp for safety, so you don't accidentally delete non tmp directory.
-  assert(isTmpDirectory(path), notTmpDirectoryMessage)
+  assert(is_tmp_dir(path), notTmpDirectoryMessage)
   await remove(path, { recursive: true })
 }
 
 
-// createTmpDirectory ----------------------------------------------------------------------------
-export async function createTmpDirectory(prefix: string): Promise<string> {
+// create_tmp_dir ----------------------------------------------------------------------------
+export async function create_tmp_dir(prefix: string): Promise<string> {
   return Deno.makeTempDir({ prefix })
 }
 
 
-// getType ----------------------------------------------------------------------------------------
-export async function getType(path: string): Promise<EntryType> {
+// get_type ----------------------------------------------------------------------------------------
+export async function get_type(path: string): Promise<EntryType> {
   const stat = await Deno.stat(path)
   if      (stat.isFile)         return 'file'
   else if (stat.isDirectory)    return 'directory'
@@ -239,6 +235,6 @@ export async function getType(path: string): Promise<EntryType> {
 
 
 // Testing -----------------------------------------------------------------------------------------
-// p(await readDirectory('.'))
-// p(await readFile('./fs.ts', { encoding: 'utf-8' }))
-// p(await writeFile('./tmp/write_test.txt', 'some content'))
+// p(await read_dir('.'))
+// p(await read_file('./fs.ts', { encoding: 'utf-8' }))
+// p(await write_file('./tmp/write_test.txt', 'some content'))

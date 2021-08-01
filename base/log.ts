@@ -1,14 +1,13 @@
-import { p, take, some, isEmpty, toJson } from "./base.ts"
-import { getEnv } from "./env.ts"
+import "./base.ts"
 import { colors } from "./deps.ts"
 
 const { red, yellow, gray: grey } = colors
 
 export const logConfig = {
-  log:         getEnv("log", "true") != "false",
-  disableLogs: new Set(getEnv("disable_logs", "").split(",")),
-  logAsDebug:  new Set(getEnv("log_as_debug", "").split(",")),
-  logData:     getEnv("log_data", "false") == "true"
+  log:         get_env("log", "true") != "false",
+  disableLogs: new Set(get_env("disable_logs", "").split(",")),
+  logAsDebug:  new Set(get_env("log_as_debug", "").split(",")),
+  logData:     get_env("log_data", "false") == "true"
 }
 
 function isEnabled(component: string, level: string): boolean {
@@ -49,12 +48,12 @@ export class Log {
     } else {
       let log = new Log(this.component, [...this.ids], { ...this.data })
       // let log = new Log(this.component, [...this.ids], { ...this.data }, this.isSilenced)
-      let sdata = data as some
+      let sdata = data as any
       for (const k in sdata) {
         let v = sdata[k]
         if (k == "id")       log.ids.push("" + v)
         else if (k == "ids") log.ids.push(...(Array.isArray(v) ? v.map((id) => "" + id) : ["" + v]))
-        else                 (log.data as some)[k] = v
+        else                 (log.data as any)[k] = v
       }
       return log
     }
@@ -138,17 +137,17 @@ function defaultLogMethod(log: Log): void {
 
 function formatComponent(component: string): string {
   const maxLen = 4
-  return take(component, maxLen).toLowerCase().padStart(maxLen, " ") + " | "
+  return component.take(maxLen).toLowerCase().padStart(maxLen, " ") + " | "
 }
 
 function formatIds(ids: string[]): string {
   const maxLen = 7
-  return ids.map((id) => take(id, maxLen).toLowerCase().padEnd(maxLen, " ") + " ").join(", ")
+  return ids.map((id) => id.take(maxLen).toLowerCase().padEnd(maxLen, " ") + " ").join(", ")
 }
 
 function formatData(data: { [key: string]: unknown }): string {
   if (!logConfig.logData) return ""
-  return isEmpty(data) ? "" : " | " + toJson(data)
+  return Object.is_empty(data) ? "" : " | " + to_json(data)
 }
 
 function formatMessage(message: string, data: { [key: string]: unknown }): string {

@@ -1,4 +1,4 @@
-import { isNumber, test, assert, trim } from './base.ts'
+import './base.ts'
 
 
 // parse_number --------------------------------------------------------------------------
@@ -8,7 +8,7 @@ export function parse_number(
     on_error?: (s: string) => string
   } = {}
 ): number {
-  let v = trim(s.toLowerCase())
+  let v = s.downcase().trim()
   const do_check = (n: number) => { if (check && !check(n)) throw new Error(`check for number ${s} failed`) }
 
   // Replacing trailing zeros in reminder, like `100.20` => `100.2`
@@ -21,12 +21,12 @@ export function parse_number(
   v = v.replace(/,/g, '')
 
   const i = parseInt(v)
-  if (('' + i) == v && isNumber(i)) {
+  if (('' + i) == v && is_number(i)) {
     do_check(i)
     return i
   }
   const f = parseFloat(v)
-  if (('' + f) == v && isNumber(f)) {
+  if (('' + f) == v && is_number(f)) {
     do_check(f)
     return f
   }

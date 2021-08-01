@@ -1,4 +1,4 @@
-import { p, some, assert, ensure, slowTest } from "base/base.ts"
+import "base/base.ts"
 import { Log } from "base/log.ts"
 import { sql, Db } from "./db_table.ts"
 
@@ -76,7 +76,7 @@ export class KVDb {
 
 // Test --------------------------------------------------------------------------------------------
 // test=KVDb deno run --import-map=import_map.json --unstable --allow-all db/kvdb.ts
-slowTest("KVDb", async () => {
+slow_test("KVDb", async () => {
   const db = new Db("deno_unit_tests")
   const kvdb = new KVDb(db)
   await kvdb.delAll()

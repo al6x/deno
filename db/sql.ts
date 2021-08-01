@@ -1,15 +1,15 @@
-import { p, assert, test, some, trim, sort } from "base/base.ts"
+import "base/base.ts"
 import { formatTime } from "base/time.ts"
 
 export type SQLValue = object | null | string | number | boolean | Date
 export type SQL = { sql: string, values: SQLValue[] }
 
 export function sqlToString(sql: SQL) {
-  return trim(sql.sql.replace(/[\n\s]+/g, " ")) +
+  return sql.sql.replace(/[\n\s]+/g, " ").trim() +
     (sql.values.length > 0 ? ` <- ${sql.values.map(sqlValueToString).join(", ")}` : "")
 }
 
-function isSql(o: some): o is SQL {
+function isSql(o: any): o is SQL {
   return o != null && o != undefined && typeof o == "object" && "sql" in o && "values" in o
 }
 
@@ -18,9 +18,9 @@ function sql(literals: TemplateStringsArray, ...values: SQLValue[]): SQL
 function sql(sql: string): SQL
 function sql(sql: string, values: object): SQL
 function sql(sql: string, values: object, validateUnusedKeys: boolean): SQL
-function sql(...args: some[]): SQL {
+function sql(...args: any[]): SQL {
   let fn = Array.isArray(args[0]) ? sqlLiteral : sqlParams
-  return (fn as some).apply(null, args)
+  return (fn as any).apply(null, args)
 }
 export { sql }
 
@@ -87,9 +87,9 @@ export function sqlParams(sql: string, values = {}, validateUnusedKeys = true): 
     let key = capture.replace(":", "")
     sqlKeys.add(key)
     if (!(key in values)) throw new Error(`no SQL param :${key}`)
-    let value = (values as some)[key]
+    let value = (values as any)[key]
     if (Array.isArray(value)) {
-      let item: some, placeholders: string[] = []
+      let item: any, placeholders: string[] = []
       for (item of value) {
         orderedValues.push(item)
         counter = counter + 1
@@ -139,8 +139,8 @@ export function buildWhere<T>(where: Where<T>, ids: string[]): SQL {
     for (const id of ids) if (!(id in where)) isT = false
 
     let fields = isT ? Object.keys(where).filter((n) => ids.includes(n)) : Object.keys(where)
-    const conditions = sort(fields).map((name) => `${name} = :${name}`).join(" and ")
-    return sql(conditions, where as some, !isT)
+    const conditions = fields.sort_by((n) => n).map((name) => `${name} = :${name}`).join(" and ")
+    return sql(conditions, where as any, !isT)
   } else if (typeof where == "number" || typeof where == "string" || typeof where == "boolean") {
     return sql`id = ${where}`
   } else {

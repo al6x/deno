@@ -1,4 +1,4 @@
-import { p, test, assert, take, Found } from "base/base.ts"
+import "base/base.ts"
 import * as fs from "base/fs.ts"
 import * as crypto from "base/crypto.ts"
 import * as stdpath from "./deps.ts"
@@ -11,7 +11,7 @@ export async function assetHashSlow(path: string, assetFilePaths: string[]): Pro
   for (const assetFilePath of assetFilePaths) {
     let fullPath = stdpath.join(assetFilePath, path)
     if (await fs.exists(fullPath)) {
-      return take(await crypto.fileHash(fullPath, "md5"), 6)
+      return (await crypto.fileHash(fullPath, "md5")).take(6)
     }
   }
   throw new Error(`Asset file not found, ${path}`)
@@ -37,21 +37,20 @@ export async function assetHash(path: string, assetFilePaths: string[]): Promise
 
 
 // assetFilePath ---------------------------------------------------------------------------------------
-export async function assetFilePathSlow(path: string, assetFilePaths: string[]): Promise<Found<string>> {
+export async function assetFilePathSlow(path: string, assetFilePaths: string[]): Promise<E<string>> {
   if (!path.startsWith("/")) throw new Error(`Path should start with /, ${path}`)
   if (path.includes("..")) throw new Error(`Invalid path, ${path}`)
   for (const assetFilePath of assetFilePaths) {
     let fullPath = stdpath.join(assetFilePath, path)
-    p(fullPath, await fs.exists(fullPath))
-    if (await fs.exists(fullPath)) return { found: true, value: fullPath }
+    if (await fs.exists(fullPath)) return { is_error: false, value: fullPath }
   }
-  return { found: false, message: `Asset file not found, ${path}` }
+  return { is_error: true, message: `Asset file not found, ${path}` }
 }
 
-const assertPathCache = new Map<string, Found<string>>()
-const assertPathInProcess = new Map<string, Promise<Found<string>>>()
+const assertPathCache = new Map<string, E<string>>()
+const assertPathInProcess = new Map<string, Promise<E<string>>>()
 
-export async function assetFilePath(path: string, assetFilePaths: string[]): Promise<Found<string>> {
+export async function assetFilePath(path: string, assetFilePaths: string[]): Promise<E<string>> {
   const cached = assertPathCache.get(path)
   if (cached) return cached
   const inProcess = assertPathInProcess.get(path)
@@ -60,7 +59,7 @@ export async function assetFilePath(path: string, assetFilePaths: string[]): Pro
     let promise = assetFilePathSlow(path, assetFilePaths)
     assertPathInProcess.set(path, promise)
     let found = await promise
-    if (!found.found) return found // Not setting cache if it's not found, to avoid memory leak
+    if (found.is_error) return found // Not setting cache if it's not found, to avoid memory leak
     assertPathCache.set(path, found)
   } finally {
     assertPathInProcess.delete(path)

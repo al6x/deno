@@ -1,4 +1,4 @@
-import { p, test, assert, toJson } from "base/base.ts"
+import "base/base.ts"
 import { Context, HttpError } from "./deps.ts"
 import { assetHash } from "./util.ts"
 
@@ -77,5 +77,5 @@ export async function delSessionCookie(ctx: Context, k: string) {
 // sendJson ----------------------------------------------------------------------------------------
 export async function sendJson(ctx: Context, data: object) {
   ctx.response.headers.set("Content-Type", "application/json")
-  ctx.response.body = toJson(data)
+  ctx.response.body = to_json(data)
 }

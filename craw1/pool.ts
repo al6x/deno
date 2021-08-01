@@ -1,4 +1,4 @@
-import { sleep, sec, something, mb, assert, p } from 'base/base.ts'
+import { sec, mb } from 'base/base.ts'
 import { Log } from 'base/log.ts'
 import * as fs from 'base/fs.ts'
 import { Page, PageOptions, to_page_options } from './parser.ts'
@@ -35,7 +35,7 @@ export class Pool {
     page_options: Partial<PageOptions> = {}
   ) {
     this.options = { ...default_options, ...options }
-    // if (page_options.tmp_dir) assert(fs.isTmpDirectory(page_options.tmp_dir), fs.notTmpDirectoryMessage)
+    // if (page_options.tmp_dir) assert(fs.is_tmp_dir(page_options.tmp_dir), fs.notTmpDirectoryMessage)
     this.page_options = to_page_options(page_options)
     this.log = new Log(options.id || 'parser_pool')
   }
@@ -62,7 +62,7 @@ export class Pool {
   protected async create_new_page_and_close_existing(): Promise<Page> {
     await this.close_page()
 
-    await fs.removeTmpDirectory(this.page_options.tmp_dir)
+    await fs.remove_mp_dir(this.page_options.tmp_dir)
 
     this.log.debug('opening page')
     this.browser = await driver_default_import.launch({
@@ -80,7 +80,7 @@ export class Pool {
 
     const page = await Page.build(this.browser, this.page_options)
     // Increasing buffer size for responses
-    await (page.page as something)._client.send('Network.enable', {
+    await (page.page as any)._client.send('Network.enable', {
       maxResourceBufferSize: 400 * mb,
       maxTotalBufferSize:    1000 * mb,
     })

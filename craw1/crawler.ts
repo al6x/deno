@@ -1,5 +1,4 @@
-import { p, assert, sleep, min, ensure_error, isEqual, something, shuffle, hour, day,
-  each, toJson, round, map} from 'base/base.ts'
+import { min, day } from 'base/base.ts'
 import { Log } from 'base/log.ts'
 import * as fs from 'base/fs.ts'
 import { Page } from "./parser.ts"
@@ -110,7 +109,7 @@ export async function crawl(args: {
   const retry_timeout        = args.retry_timeout     || default_retry_timeout
   const max_retry_timeout    = args.max_retry_timeout || default_max_retry_timeout
   const processors: { [type: string]: JobProcessor | undefined } = {}
-  each(args.processors, (processor) => processors[processor.job_type] = processor as JobProcessor)
+  args.processors.each((processor) => processors[processor.job_type] = processor as JobProcessor)
 
   const log = new Log(args.id || 'crawler')
 
@@ -122,23 +121,23 @@ export async function crawl(args: {
     const created = await create_jobs()
 
     // Adding jobs
-    each(created.jobs, ({ type }) => assert.equal(type, job_type))
+    created.jobs.each(({ type }) => assert.equal(type, job_type))
     jobs.push(...created.jobs)
 
     // Adding job states
     const job_ids = new Set<string>()
-    each(created.jobs, ({ id }) => job_ids.add(id))
-    each(created.job_states, (state) => {
+    created.jobs.each(({ id }) => job_ids.add(id))
+    created.job_states.each((state) => {
       assert(job_ids.has(state.job_id), `job_state has non-existing id ${state.job_id}`)
       job_states[state.job_id] = state
     })
   }
-  jobs = shuffle(jobs)
+  jobs = jobs.shuffle()
 
   // Preparing job stats
   const job_statistics_variable = new PersistentVariable<JobStatistics>(statistics_file_path, () => ({}))
   // Skipping statistics for different crawler version
-  const job_statistics = map(await job_statistics_variable.read(), (job_statistic) => {
+  const job_statistics = Object.map(await job_statistics_variable.read(), (job_statistic) => {
     if (job_statistic && job_statistic.retry && job_statistic.retry.crawler_version != crawler_version) {
       return { ...job_statistic, retry: undefined }
     } else return job_statistic
@@ -154,10 +153,10 @@ export async function crawl(args: {
 
     // Adding auto-save
     setInterval(async () => {
-      if (isEqual(job_statistics, await job_statistics_variable.read())) return
+      if (job_statistics.is_equal(await job_statistics_variable.read())) return
       // try {
         await job_statistics_variable.write(job_statistics)
-        await fs.writeFile(errors_file_path, toJson(get_errors(job_statistics), true))
+        await fs.write_file(errors_file_path, to_json(get_errors(job_statistics), true))
         log.debug('auto saving job stats')
       // } catch(e) {
       //   log('error', "can't auto save job stats", e)
@@ -206,7 +205,7 @@ export async function crawl(args: {
         // Processing job
         const reason_message = pss.reason == 'outdated' ?
           'outdated' :
-          `expired by ${round(pss.by / min)} min`
+          `expired by ${(pss.by / min).round()} min`
         log.info(`${job.type} ${job.id} processing '${reason_message}'`)
 
         const job_state = await pool.with_page((page) => processor.process(job, page))

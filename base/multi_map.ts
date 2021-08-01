@@ -1,5 +1,4 @@
 type SimpleTypes = number | string | boolean
-type some = any
 
 // Map where keys could be an array of simple types.
 export class MultiMap<V, K extends SimpleTypes[] = string[]> {
@@ -16,7 +15,7 @@ export class MultiMap<V, K extends SimpleTypes[] = string[]> {
 }
 
 function set<V>(
-  i: number, keys: SimpleTypes[], value: V, store: Map<SimpleTypes, some>, mmap: MultiMap<V, SimpleTypes[]>
+  i: number, keys: SimpleTypes[], value: V, store: Map<SimpleTypes, any>, mmap: MultiMap<V, SimpleTypes[]>
 ) {
   const key = keys[i]
   if (i == keys.length - 1) {
@@ -32,7 +31,7 @@ function set<V>(
   }
 }
 
-function has(i: number, keys: SimpleTypes[], store: Map<SimpleTypes, some>): boolean {
+function has(i: number, keys: SimpleTypes[], store: Map<SimpleTypes, any>): boolean {
   if (i == keys.length - 1) return store.has(keys[i])
   else {
     const nextStore = store.get(keys[i])
@@ -40,7 +39,7 @@ function has(i: number, keys: SimpleTypes[], store: Map<SimpleTypes, some>): boo
   }
 }
 
-function get<V>(i: number, keys: SimpleTypes[], store: Map<SimpleTypes, some>): V | undefined {
+function get<V>(i: number, keys: SimpleTypes[], store: Map<SimpleTypes, any>): V | undefined {
   if (i == keys.length - 1) return store.get(keys[i])
   else {
     const nextStore = store.get(keys[i])
@@ -49,7 +48,7 @@ function get<V>(i: number, keys: SimpleTypes[], store: Map<SimpleTypes, some>): 
 }
 
 function del<V>(
-  i: number, keys: SimpleTypes[], store: Map<SimpleTypes, some>, mmap: MultiMap<V, SimpleTypes[]>
+  i: number, keys: SimpleTypes[], store: Map<SimpleTypes, any>, mmap: MultiMap<V, SimpleTypes[]>
 ): V | undefined {
   const key = keys[i]
   if (i == keys.length - 1) {

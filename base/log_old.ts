@@ -38,7 +38,7 @@ function log(
   level: LogLevel, message: string, short?: something, detailed?: something
 ): void {
   if (level == 'debug' && !isDebugEnabled()) return
-  getEnvironment() == 'development' ?
+  get_environment() == 'development' ?
     logInDevelopment(level, message, short, detailed) :
     logNotInDevelopment(level, message, short, detailed)
 }

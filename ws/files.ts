@@ -1,4 +1,4 @@
-import { p, last, assert, slowTest } from "base/base.ts"
+import "base/base.ts"
 import { Log } from "base/log.ts"
 import * as crypto from "base/crypto.ts"
 import * as fs from "base/fs.ts"
@@ -33,7 +33,7 @@ export class Files {
     this.log
       .with({ user_id, project_id, path })
       .info("get_file {user_id}.{project_id} {path}")
-    return fs.readFile(this.filePath(user_id, project_id, path))
+    return fs.read_file(this.filePath(user_id, project_id, path))
   }
 
   async has(user_id: string, project_id: string, path: string): Promise<boolean> {
@@ -72,7 +72,7 @@ export class Files {
     if (size_b > this.maxFileB) throw Error(`file is too big ${size_b}b, max allowed ${this.maxFileB}`)
 
     const fpath = this.filePath(user_id, project_id, path)
-    await fs.writeFile(fpath, data)
+    await fs.write_file(fpath, data)
 
     const file: File = { user_id, project_id, path, hash, size_b }
     await this.db_files.save(file)
@@ -103,7 +103,7 @@ export class Files {
   protected tmpDirCreated = false
   async ensureTmpDirCreated(): Promise<void> {
     if (this.tmpDirCreated) return
-    await fs.createDirectory(this.tmpDir)
+    await fs.create_dir(this.tmpDir)
     this.tmpDirCreated = true
   }
 
@@ -208,7 +208,7 @@ const create_files_schema = `
 
 // Test --------------------------------------------------------------------------------------------
 // test=Files deno run --import-map=import_map.json --unstable --allow-all ws/files.ts
-slowTest("Files", async () => {
+slow_test("Files", async () => {
   const db = new Db("deno_unit_tests")
 
   const files = new Files(db, "./tmp/files_test/files", "./tmp/files_test/tmp")
