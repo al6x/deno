@@ -944,7 +944,7 @@ assert_impl.aequal = (a, b, message, deltaRelative) => {
 export function deep_clone_and_sort<T>(o: T): T {
   if      (is_array(o))  return o.map(deep_clone_and_sort) as any
   else if (is_object(o)) {
-    if ('dump' in o)  {
+    if ('to_json_hook' in o)  {
       return deep_clone_and_sort((o as any).to_json_hook())
     } else {
       return Object.assign({},
