@@ -116,6 +116,7 @@ declare global {
   function is_string(v: unknown): v is string
   function is_object(v: unknown): v is { [key: string]: any }
   function is_function(v: unknown): v is Function
+  function is_promise(v: unknown): v is Promise<any>
   function is_undefined(v: unknown): v is undefined
 
   function set_timeout(fn: () => void, delay_ms: number): number
@@ -153,6 +154,9 @@ window.is_object    = function(v: unknown): v is { [key: string]: any } {
   return typeof v == 'object' && v !== null
 }
 window.is_function  = function(v: unknown): v is Function { return typeof v == 'function' }
+window.is_promise   = function(v: unknown): v is Promise<any> {
+  return typeof v == 'object' && v !== null && (typeof ((v as any).then) == 'function')
+}
 window.is_undefined = function(v: unknown): v is undefined { return v === undefined }
 
 window.set_timeout = function(fn, delay_ms) { return setTimeout(fn, delay_ms) }
@@ -1139,6 +1143,33 @@ async function http_call_raw(
     call_without_timeout().then(resolve, reject)
   })
 }
+
+// get_data, post_data -----------------------------------------------------------------------------
+export async function get_data<Res>(url: string, options?: HttpRawOptions): Promise<Res> {
+  const headers = { "Content-Type": "application/json" }
+  const json = await http_get(url, { headers, ...(options || {}) })
+  const data = parse_data<Res>(JSON.parse(json))
+  if (data.is_error) throw new Error(data.message)
+  else               return data.value
+}
+
+export async function post_data<Req, Res>(url: string, req: Req, options?: HttpRawOptions): Promise<Res> {
+  const headers = { "Content-Type": "application/json" }
+  const json = await http_post(url, to_json(req), { headers, ...(options || {}) })
+  const data = parse_data<Res>(JSON.parse(json))
+  if (data.is_error) throw new Error(data.message)
+  else               return data.value
+}
+
+export function parse_data<T>(data: any): E<T> {
+  if (is_object(data) && 'is_error' in data) {
+    if (data.is_error) return { is_error: true,  message: (data.message || 'Unknown error') }
+    else               return { is_error: false, value: data.value }
+  } else {
+    return { is_error: false, value: data }
+  }
+}
+
 
 
 // build_url ----------------------------------------------------------------------------------------
