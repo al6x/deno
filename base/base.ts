@@ -203,6 +203,7 @@ declare global {
     size(o: object): number
     each<T>(o: { [k: string]: T }, fn: (v: T, i: string) => void): void
     map<T, R>(o: { [k: string]: T }, fn: (v: T, i: string) => R): { [k: string]: R }
+    filter<T>(o: { [k: string]: T }, fn: (v: T, i: string) => boolean): { [k: string]: T }
   }
 
   interface Object {
@@ -239,7 +240,7 @@ Object.each = function <T>(o: { [k: string]: T }, fn: (v: T, k: string) => void)
   }
 }
 
-Object.map = function <T, R>(o: { [k: string]: T }, fn: (v: T, i: string) => R): { [k: string]: R } {
+Object.map = function <T, R>(o: { [k: string]: T }, fn: (v: T, k: string) => R): { [k: string]: R } {
   const r: { [k: string]: R } = {}
   for (const k in o) {
     if (!o.hasOwnProperty(k)) continue
@@ -249,13 +250,28 @@ Object.map = function <T, R>(o: { [k: string]: T }, fn: (v: T, i: string) => R):
   return r
 }
 
+Object.filter = function<T>(o: { [k: string]: T }, fn: (v: T, k: string) => boolean): { [k: string]: T } {
+  const r: { [k: string]: T } = {}
+  for (const k in o) {
+    if (!o.hasOwnProperty(k)) continue
+    const v = o[k]
+    if (fn(v, k)) r[k] = v
+  }
+  return r
+}
+
+const toStringOriginal = Object.prototype.toString
+function toStringOverriden(this: object): string {
+  return this.to_s() // Allowing using `to_s` same way as `toString`
+}
+
 extend(Object.prototype, {
   is_equal: function<T>(this: T, another: T): boolean {
     return is_equal(this, another)
   },
 
-  to_s: function<T>(this: T): string {
-    return '' + this
+  to_s: function(this: object): string {
+    return this.toString == toStringOverriden ? toStringOriginal.call(this) : this.toString()
   },
 
   clone: function<T>(this: T): T {
@@ -264,14 +280,10 @@ extend(Object.prototype, {
 
   to_success: function<T>(this: T): { is_error: false, value: T } {
     return { is_error: false, value: this }
-  }
+  },
+
+  toString: toStringOverriden
 })
-
-
-// export function is_empty<T>(o: { [key: string]: T }): boolean {
-//   for (const _k in o) return false
-//   return true
-// }
 
 
 // -------------------------------------------------------------------------------------------------
@@ -296,8 +308,8 @@ declare global {
     has(v: T): boolean
     has(f: (v: T, i: number) => boolean): boolean
 
-    group_by(this: T[], f: (v: T, i: number) => number): Map<number, T[]>
-    group_by(this: T[], f: (v: T, i: number) => string): Map<string, T[]>
+    group_by(f: (v: T, i: number) => number): Map<number, T[]>
+    group_by(f: (v: T, i: number) => string): Map<string, T[]>
 
     i(v: T): number | undefined
     i(f: (v: T, i: number) => boolean): number | undefined
@@ -320,16 +332,24 @@ declare global {
     lasti(v: T): number | undefined
     lasti(f: (v: T, i: number) => boolean): number | undefined
 
-    maxi(): number
+    max<T extends { compare(other: T): number }>(this: T[]): T
+    max(f: ((v: T) => number)): number
+
+    min<T extends { compare(other: T): number }>(this: T[]): T
+    min(f: ((v: T) => number)): number
+
+    maxi<T extends { compare(other: T): number }>(this: T[]): number
     maxi(f: ((v: T) => number)): number
+
+    mini<T extends { compare(other: T): number }>(this: T[]): number
+    mini(f: ((v: T) => number)): number
 
     median(this: number[], is_sorted?: boolean): number
     mean(this: number[]): number
 
-    mini(): number
-    mini(f: ((v: T) => number)): number
-
     each(fn: (v: T, i: number) => void): void
+
+    apply(fn: (v: T, i: number) => void): T[]
 
     quantile(this: number[], q: number, is_sorted?: boolean): number
 
@@ -342,9 +362,15 @@ declare global {
 
     shuffle(random?: () => number): T[]
 
-    sort_by<T, K extends string | number | boolean>(this: T[], by: (v: T) => K): T[]
+    asc<CT extends T & { compare(other: T): number }>(this: CT[]): CT[]
+    asc<K extends string | number | boolean>(by: (v: T) => K): T[]
+    sort_by<T, K extends string | number | boolean>(by: (v: T) => K): T[] // sort_by deprecated, use asc
 
     sum(this: number[]): number
+
+    to_set(): HSet<T>
+
+    to_hash<K>(key: (v: T, i: number) => K): Hash<T, K>
   }
 }
 
@@ -458,19 +484,58 @@ extend(Array.prototype, {
     return undefined
   },
 
-  maxi<T>(this: T[], f?: ((v: T) => number)): number {
-    if (this.length == 0) throw new Error(`can't find maxi for empty array`)
-    f = f || ((v: any) => v)
-    if (this.length == 0) return -1
-    let max = f(this[0]), max_i = 0
-    for(let i = 1; i < this.length; i++) {
-      let m = f(this[i])
-      if (m > max) {
-        max = m
-        max_i = i
+  max<T extends { compare(other: T): number }>(this: T[], f?: ((v: T) => number)): T {
+    return this[f ? this.maxi(f) : this.maxi()]
+  },
+
+  min<T extends { compare(other: T): number }>(this: T[], f?: ((v: T) => number)): T {
+    return this[f ? this.mini(f) : this.mini()]
+  },
+
+  maxi<T extends { compare(other: T): number }>(this: T[], f?: ((v: T) => number)): number {
+    if (this.length == 0) throw new Error("can't find maxi for empty array")
+    if (f) {
+      let maxf = f(this[0]), maxi = 0
+      for (let i = 0; i < this.length; i++) {
+        const v = this[i], fv = f(v)
+        if (fv > maxf) {
+          maxf = fv; maxi = i
+        }
       }
+      return maxi
+    } else {
+      let max = this[0], maxi = 0
+      for (let i = 0; i < this.length; i++) {
+        const v = this[i]
+        if (v.compare(max) > 0) {
+          max = v; maxi = i
+        }
+      }
+      return maxi
     }
-    return max_i
+  },
+
+  mini<T extends { compare(other: T): number }>(this: T[], f?: ((v: T) => number)): number {
+    if (this.length == 0) throw new Error("can't find mini for empty array")
+    if (f) {
+      let minf = f(this[0]), mini = 0
+      for (let i = 0; i < this.length; i++) {
+        const v = this[i], fv = f(v)
+        if (fv > minf) {
+          minf = fv; mini = i
+        }
+      }
+      return mini
+    } else {
+      let min = this[0], mini = 0
+      for (let i = 0; i < this.length; i++) {
+        const v = this[i]
+        if (v.compare(min) > 0) {
+          min = v; mini = i
+        }
+      }
+      return mini
+    }
   },
 
   median(this: number[], is_sorted = false): number {
@@ -481,21 +546,6 @@ extend(Array.prototype, {
     let sum = 0
     for (const v of this) sum += v
     return sum / this.length
-  },
-
-  mini<T>(this: T[], f?: ((v: T) => number)): number {
-    if (this.length == 0) throw new Error(`can't find mini for empty array`)
-    f = f || ((v: any) => v)
-    if (this.length == 0) return -1
-    let min = f(this[0]), minI = 0
-    for(let i = 1; i < this.length; i++) {
-      let m = f(this[i])
-      if (m < min) {
-        min = m
-        minI = i
-      }
-    }
-    return minI
   },
 
   quantile(this: number[], q: number, is_sorted = false): number {
@@ -512,6 +562,11 @@ extend(Array.prototype, {
 
   each<T>(this: T[], fn: (v: T, i: number) => void): void {
     this.forEach(fn)
+  },
+
+  apply<T>(this: T[], fn: (v: T, i: number) => void): T[] {
+    this.forEach(fn)
+    return this
   },
 
   partition<T>(this: Array<T>, splitter: ((v: T, i: number) => boolean) | number[]): [Array<T>, Array<T>] {
@@ -541,12 +596,31 @@ extend(Array.prototype, {
     return list
   },
 
+  asc<T, K extends string | number | boolean>(this: T[], by?: (v: T) => K): T[] {
+    if (by) return (sort_by as any).call(this, by)
+    else {
+      const copy = [...this]
+      return copy.sort((a, b) => (a as any).compare(b))
+    }
+  },
+
   sort_by,
 
   sum(this: number[]): number {
     let sum = 0
     for (const v of this) sum += v
     return sum
+  },
+
+  to_set<T>(this: T[]): HSet<T> { return new HSet(this) },
+
+  to_hash<T, K>(this: T[], key: (v: T, i: number) => K): Hash<T, K> {
+    const h = new Hash<T, K>()
+    for (let i = 0; i < this.length; i++) {
+      const v = this[i]
+      h.set(key(v, i), v)
+    }
+    return h
   }
 })
 
@@ -581,11 +655,13 @@ declare global {
   class Hash<V, K = string> {
     map<R>(f: (v: V, k: K) => R): Hash<R, K>
 
-    each<R>(f: (v: V, k: K) => R): void
+    each(f: (v: V, k: K) => void): void
+
+    apply(f: (v: V, k: K) => void): Hash<V, K>
 
     set(k: K, v: V): void
 
-    get(k: K): V | undefined
+    get(k: K): V
 
     size(): number
 
@@ -594,6 +670,10 @@ declare global {
     values(): V[]
 
     keys(): K[]
+
+    filter(fn: (v: V, k: K) => boolean): Hash<V, K>
+
+    filter_map<V, K, R>(this: Hash<V, K>, fn: (v: V, k: K) => R | undefined): Hash<R, K>
 
     entries(): [V, K][]
 
@@ -604,6 +684,8 @@ declare global {
     clone(): Hash<V, K>
 
     to_json_hook(): { [key: string]: V }
+
+    static from_json<V, K = string>(this: { new: Hash<V, K> }, json: string): Hash<V, K>
 
     toJSON(): { [key: string]: V }
   }
@@ -625,13 +707,22 @@ declare global {
     return h
   }
 
-  each<R>(f: (v: V, k: K) => R): void {
+  each(f: (v: V, k: K) => void): void {
     for (const [k, v] of this.m) f(v, k)
+  }
+
+  apply(f: (v: V, k: K) => void): Hash<V, K> {
+    for (const [k, v] of this.m) f(v, k)
+    return this
   }
 
   set(k: K, v: V): void { this.m.set(k, v) }
 
-  get(k: K): V | undefined { return this.m.get(k) }
+  get(k: K): V {
+    const v = this.m.get(k)
+    if (v === undefined) throw new Error(`key doesn't exist`)
+    return v
+  }
 
   size(): number { return this.m.size }
 
@@ -647,6 +738,24 @@ declare global {
     const keys: K[] = []
     for (const k of this.m.keys()) keys.add(k)
     return keys
+  }
+
+  filter(fn: (v: V, k: K) => boolean): Hash<V, K> {
+    const r = new Hash<V, K>()
+    for (const k of this.m.keys()) {
+      const v = this.m.get(k)!
+      if (fn(v, k)) r.set(k, v)
+    }
+    return r
+  }
+
+  filter_map<R>(fn: (v: V, k: K) => R | undefined): Hash<R, K> {
+    const filtered = new Hash<R, K>()
+    for (const k of this.m.keys()) {
+      const r = fn(this.m.get(k)!, k)
+      if (r !== undefined) filtered.set(k, r)
+    }
+    return filtered
   }
 
   entries(): [V, K][] {
@@ -668,6 +777,84 @@ declare global {
   }
 
   toJSON(): { [key: string]: V } { return this.to_json_hook() }
+
+  static from_json<V, K = string>(this: { new: Hash<V, K> }, json: string): Hash<V, K> {
+    return new Hash(JSON.parse(json))
+  }
+}
+
+// -------------------------------------------------------------------------------------------------
+// HSet --------------------------------------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
+declare global {
+  class HSet<V> {
+    constructor(set?: V[] | HSet<V>)
+
+    map<R>(f: (v: V) => R): HSet<R>
+
+    each(f: (v: V) => void): void
+
+    add(v: V): void
+
+    size(): number
+
+    is_empty(): boolean
+
+    to_a(): V[]
+
+    del(k: V): void
+
+    has(k: V): boolean
+
+    clone(): HSet<V>
+
+    to_json_hook(): V[]
+
+    static from_json<V>(this: { new: HSet<V> }, json: string): HSet<V>
+
+    toJSON(): V[]
+  }
+}
+
+(window as any).HSet = class HSet<V> {
+  private s: Set<V>
+
+  constructor(set?: V[] | HSet<V>) {
+    if      (is_undefined(set))   this.s = new Set()
+    else if (is_array(set))       this.s = new Set(set)
+    else if (set instanceof HSet) this.s = new Set(set.s)
+    else                          throw "invalid usage"
+  }
+
+  map<R>(f: (v: V) => R): HSet<R> {
+    const set = new HSet<R>()
+    for (const v of this.s) set.add(f(v))
+    return set
+  }
+
+  each(f: (v: V) => void): void { for (const v of this.s) f(v) }
+
+  add(v: V): void { this.s.add(v) }
+
+  size(): number { return this.s.size }
+
+  is_empty(): boolean { return this.s.size == 0 }
+
+  to_a(): V[] { return Array.from(this.s) }
+
+  del(v: V): void { this.s.delete(v) }
+
+  has(k: V): boolean { return this.s.has(k) }
+
+  clone(): HSet<V> { return new HSet(this) }
+
+  to_json_hook(): V[] { return this.to_a() }
+
+  static from_json<V>(this: { new: HSet<V> }, json: string): HSet<V> {
+    return new HSet(JSON.parse(json))
+  }
+
+  toJSON(): V[] { return this.to_json_hook() }
 }
 
 
@@ -686,6 +873,9 @@ declare global {
     trim(): string
     dedent(): string
     last(n?: number): string
+    ljust(n: number, s: string): string
+    rjust(n: number, s: string): string
+    compare(other: string): number // implements Comparable
   }
 }
 
@@ -733,7 +923,13 @@ extend(String.prototype, {
       if (l < n) throw new Error(`can't get last ${n} elements from string of length ${l}`)
       else return this.slice(l - n, l)
     }
-  }
+  },
+
+  ljust(this: string, n: number, s: string): string { return this.padEnd(n, s) },
+
+  rjust(this: string, n: number, s: string): string { return this.padStart(n, s) },
+
+  compare(this: string, other: string): number { return this.localeCompare(other) }
 })
 
 
@@ -757,13 +953,31 @@ declare global {
   interface Number {
     round(digits?: number): number,
     pow(y: number): number
+    div(y: number): number
+    rem(y: number): number
+    div_rem(y: number): [number, number]
+    pluralize(singular: string): string
+    compare(other: number): number // Comparable
+    abs(): number
   }
 }
 
 extend(Number.prototype, {
   round,
 
-  pow(this: number, y: number) { return Math.pow(this, y) }
+  pow(this: number, y: number) { return Math.pow(this, y) },
+
+  div(this: number, y: number) { return Math.floor(this / y) },
+
+  rem(this: number, y: number) { return this % y },
+
+  div_rem(this: number, y: number) { return [Math.floor(this / y), this % y]  },
+
+  pluralize(this: number, singular: string): string { return this == 1 ? singular : singular + 's' },
+
+  compare(this: number, other: number): number { return this - other },
+
+  abs(this: number): number { return Math.abs(this) }
 })
 
 
@@ -949,7 +1163,7 @@ export function deep_clone_and_sort<T>(o: T): T {
   if      (is_array(o))  return o.map(deep_clone_and_sort) as any
   else if (is_object(o)) {
     if ('to_json_hook' in o)  {
-      return deep_clone_and_sort((o as any).to_json_hook())
+      return (o as any).to_json_hook()
     } else {
       return Object.assign({},
         ...Object.entries(o)
