@@ -27,7 +27,6 @@ export interface Job {
 
   should_process(): ShouldProcess
   process(): Promise<LastProcessed>
-  after?(): Promise<void>
 }
 const max_abs_job_priority = 1000
 
@@ -74,7 +73,7 @@ export class Crawler {
   protected job_states:         JobStates
   protected job_states_storage: PersistentVariable<JobStates>
   protected focus:              HSet<string>
-  protected log: Log
+  protected log:                Log
   // protected readonly state_path:        string
 
   protected constructor(
@@ -136,9 +135,6 @@ export class Crawler {
       this.log.with({ id, reason }).info("processing '{id}', {reason}")
 
       job.last = (await job.process()).to_success()
-
-      // Processing after
-      if (job.after) await job.after()
 
       const duration = tic()
       this.log.with({ id, duration }).info("processed  '{id}' in {duration} sec")

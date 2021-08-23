@@ -1,5 +1,5 @@
 import "base/base.ts"
-import { formatTime } from "base/time.ts"
+import { Time } from "base/time.ts"
 
 export function decode<T extends object>(row: T): T {
   const o: any = {}
@@ -25,7 +25,9 @@ export function encode(values: unknown[]): unknown[] {
     if (typeof v == "object") {
       if (v instanceof Date) {
         // Encoding Date as GMT string, with resolutions for seconds only
-        return formatTime(v.valueOf())
+        return new Time(v).to_s()
+      } else if (v instanceof Time) {
+        return v.to_s()
       }
     }
     return v

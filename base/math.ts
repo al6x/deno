@@ -46,7 +46,7 @@ export function minMaxNorm(values: number[], min: number, max: number): number[]
 export function mapWithRank<V, R>(list: V[], order_by: (v: V) => number, map: (v: V, rank: number) => R): R[] {
   // Sorting accourding to rank
   const listWithIndex = list.map((v, i) => ({ v, originalI: i, order_by: order_by(v) }))
-  const sorted = listWithIndex.sort_by(({ order_by }) => order_by)
+  const sorted = listWithIndex.asc(({ order_by }) => order_by)
 
   // Adding rank, if values returned by `order_by` are the same, the rank also the same
   const sortedWithRank: { v: V, originalI: number, order_by: number, rank: number }[] = []
@@ -58,7 +58,7 @@ export function mapWithRank<V, R>(list: V[], order_by: (v: V) => number, map: (v
   }
 
   // Restoring original order and mapping
-  const originalWithRank = sortedWithRank.sort_by(({ originalI }) => originalI)
+  const originalWithRank = sortedWithRank.asc(({ originalI }) => originalI)
   return originalWithRank.map(({ v, rank }) => map(v, rank))
 }
 test(mapWithRank, () => {

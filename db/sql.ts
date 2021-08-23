@@ -1,10 +1,10 @@
 import "base/base.ts"
-import { formatTime } from "base/time.ts"
+import { Time } from "base/time.ts"
 
-export type SQLValue = object | null | string | number | boolean | Date
+export type SQLValue = object | null | string | number | boolean | Date | Time
 export type SQL = { sql: string, values: SQLValue[] }
 
-export function sqlToString(sql: SQL) {
+export function sqlToString(sql: SQL): string {
   return sql.sql.replace(/[\n\s]+/g, " ").trim() +
     (sql.values.length > 0 ? ` <- ${sql.values.map(sqlValueToString).join(", ")}` : "")
 }
@@ -149,7 +149,7 @@ export function buildWhere<T>(where: Where<T>, ids: string[]): SQL {
 }
 
 function sqlValueToString(v: SQLValue): string {
-  if (typeof v == "object" && v instanceof Date) return formatTime(v)
+  if (typeof v == "object" && v instanceof Date) return new Time(v).to_s()
   return "" + v
 }
 

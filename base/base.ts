@@ -126,7 +126,7 @@ declare global {
   function clear_interval(fn: () => void, delay_ms: number): number
 
   function to_json(o: unknown, pretty?: boolean): string
-  function from_json<T>(s: string): T
+  function from_json<T>(klass: { new(arg: any): T }, s: string): T
 
   function ensure<T>(value: (T | undefined) | E<T>, info?: string): T
 
@@ -211,9 +211,9 @@ declare global {
     to_s<T>(this: T, format?: 'json' | undefined, custom?: string): string
     clone<T>(this: T): T
     to_success<T>(this: T): { is_error: false, value: T }
-    to_json_hook?: () => any
   }
 }
+
 
 export function extend(prototype: object, functions: Record<string, Function>): void {
   for (const name in functions) {
@@ -363,8 +363,9 @@ declare global {
     shuffle(random?: () => number): T[]
 
     asc<CT extends T & { compare(other: T): number }>(this: CT[]): CT[]
-    asc<K extends string | number | boolean>(by: (v: T) => K): T[]
-    sort_by<T, K extends string | number | boolean>(by: (v: T) => K): T[] // sort_by deprecated, use asc
+    asc<K extends string | number | boolean>(by: (v: T) => string | number | boolean): T[]
+    // sort_by deprecated, use asc
+    sort_by<K extends string | number | boolean>(by: (v: T) => string | number | boolean): T[]
 
     sum(this: number[]): number
 
@@ -662,6 +663,9 @@ declare global {
     set(k: K, v: V): void
 
     get(k: K): V
+    get(k: K, deflt: V): V
+
+    getm(k: K, deflt: V): V
 
     size(): number
 
@@ -685,20 +689,20 @@ declare global {
 
     to_json_hook(): { [key: string]: V }
 
-    static from_json<V, K = string>(this: { new: Hash<V, K> }, json: string): Hash<V, K>
+    static from_json_hook<V, K = string>(this: { new: Hash<V, K> }, json: { [k: string]: V }): Hash<V, K>
 
-    toJSON(): { [key: string]: V }
+    // toJSON(): { [key: string]: V }
   }
 }
 
 (window as any).Hash = class Hash<V, K = string> {
   private m: Map<K, V>
 
-  constructor(map?: Map<K, V> | Hash<V, K>) {
+  constructor(map?: Map<K, V> | Hash<V, K> | { [k: string]: V }) {
     if (is_undefined(map))        this.m = new Map()
     else if (map instanceof Map)  this.m = new Map(map)
     else if (map instanceof Hash) this.m = new Map(map.m)
-    else                          throw "invalid usage"
+    else                          this.m = new Map(Object.entries(map) as any[])
   }
 
   map<R>(f: (v: V, k: K) => R): Hash<R, K> {
@@ -718,10 +722,15 @@ declare global {
 
   set(k: K, v: V): void { this.m.set(k, v) }
 
-  get(k: K): V {
-    const v = this.m.get(k)
-    if (v === undefined) throw new Error(`key doesn't exist`)
+  get(k: K, deflt?: V): V {
+    const v = this.m.get(k) || deflt
+    if (v === undefined) throw new Error(`key ${k} doesn't exist`)
     return v
+  }
+
+  getm(k: K, deflt: V): V {
+    if (!this.has(k)) this.set(k, deflt)
+    return this.m.get(k)!
   }
 
   size(): number { return this.m.size }
@@ -776,10 +785,10 @@ declare global {
     return h
   }
 
-  toJSON(): { [key: string]: V } { return this.to_json_hook() }
+  // toJSON(): { [key: string]: V } { return this.to_json_hook() }
 
-  static from_json<V, K = string>(this: { new: Hash<V, K> }, json: string): Hash<V, K> {
-    return new Hash(JSON.parse(json))
+  static from_json_hook<V, K = string>(this: { new: Hash<V, K> }, json: { [k: string]: V }): Hash<V, K> {
+    return new Hash(json)
   }
 }
 
@@ -810,9 +819,9 @@ declare global {
 
     to_json_hook(): V[]
 
-    static from_json<V>(this: { new: HSet<V> }, json: string): HSet<V>
+    static from_json_hook<V>(this: { new: HSet<V> }, json: V[]): HSet<V>
 
-    toJSON(): V[]
+    // toJSON(): V[]
   }
 }
 
@@ -850,11 +859,11 @@ declare global {
 
   to_json_hook(): V[] { return this.to_a() }
 
-  static from_json<V>(this: { new: HSet<V> }, json: string): HSet<V> {
-    return new HSet(JSON.parse(json))
+  static from_json_hook<V>(this: { new: HSet<V> }, json: V[]): HSet<V> {
+    return new HSet(json)
   }
 
-  toJSON(): V[] { return this.to_json_hook() }
+  // toJSON(): V[] { return this.to_json_hook() }
 }
 
 
@@ -876,6 +885,8 @@ declare global {
     ljust(n: number, s: string): string
     rjust(n: number, s: string): string
     compare(other: string): number // implements Comparable
+    split2(delimiter: string): [string, string]
+    split3(delimiter: string): [string, string, string]
   }
 }
 
@@ -929,7 +940,19 @@ extend(String.prototype, {
 
   rjust(this: string, n: number, s: string): string { return this.padStart(n, s) },
 
-  compare(this: string, other: string): number { return this.localeCompare(other) }
+  compare(this: string, other: string): number { return this.localeCompare(other) },
+
+  split2(this: string, delimiter: string): [string, string] {
+    const parts = this.split(delimiter)
+    if (parts.length != 2) throw new Error(`expected to split in two, but found ${parts.length} parts`)
+    return parts as any
+  },
+
+  split3(this: string, delimiter: string): [string, string, string] {
+    const parts = this.split(delimiter)
+    if (parts.length != 3) throw new Error(`expected to split in three, but found ${parts.length} parts`)
+    return parts as any
+  }
 })
 
 
@@ -1183,8 +1206,15 @@ export function to_json(obj: unknown, pretty = true): string {
 }
 
 // from_json ---------------------------------------------------------------------------------------
-export function from_json<T>(s: string): T {
-  return JSON.parse(s)
+export function from_json<T>(klass: { new(arg: any): T }, s: string): T {
+  const json = JSON.parse(s)
+  return 'from_json_hook' in klass ? (klass as any).from_json_hook(json) : json
+}
+
+export function as_json_string<T>(klass: { new(s: string): T }): void {
+  const aclass = klass as any
+  aclass.prototype.to_json_hook = function(): string { return this.to_s() }
+  aclass.from_json_hook = function(s: string): T { return new klass(s) }
 }
 
 // is_equal ----------------------------------------------------------------------------------------
@@ -1244,12 +1274,12 @@ function sort_by<T, K extends string | number | boolean>(this: T[], by: (v: T) =
 }
 test('sort_by', () => {
   assert.equal(
-    [{ v: true }, { v: false }].sort_by(({v}) => v),
+    [{ v: true }, { v: false }].asc(({v}) => v),
     [{ v: false }, { v: true }]
   )
 
   assert.equal(
-    [{ v: "b" }, { v: "" }, { v: "c" }].sort_by(({v}) => v),
+    [{ v: "b" }, { v: "" }, { v: "c" }].asc(({v}) => v),
     [{ v: "" }, { v: "b" }, { v: "c" }]
   )
 })
@@ -1426,26 +1456,26 @@ export class NeverError extends Error {
 
 // Promise -----------------------------------------------------------------------------------------
 // For better logging, by default promise would be logged as `{}`
-Promise.prototype.to_json_hook = function() { return 'Promise' }
-;(Promise.prototype as any).toJSON = Promise.prototype.to_json_hook
-Object.defineProperty(Promise.prototype, "cmap", { configurable: false, enumerable: false })
+// Promise.prototype.to_json_hook = function() { return 'Promise' }
+// ;(Promise.prototype as any).toJSON = Promise.prototype.to_json_hook
+// Object.defineProperty(Promise.prototype, "cmap", { configurable: false, enumerable: false })
 
 
 // Error.to_json -----------------------------------------------------------------------------------
 // Otherwise JSON will be empty `{}`
-Error.prototype.to_json_hook = function(this: Error) {
-  return { message: this.message, stack: this.stack }
-}
-;(Error.prototype as any).to_json = Error.prototype.to_json_hook
+// Error.prototype.to_json_hook = function(this: Error) {
+//   return { message: this.message, stack: this.stack }
+// }
+// ;(Error.prototype as any).to_json = Error.prototype.to_json_hook
 
 // Map.toJSON ---------------------------------------------------------------------
 // Otherwise JSON will be empty `{}`
-Map.prototype.to_json_hook = function(this: Map<any, any>) {
-  const json: any = {}
-  for (const [k, v] of this) json[k] = v
-  return json
-}
-;(Map.prototype  as any).toJSON = Map.prototype.to_json_hook
+// Map.prototype.to_json_hook = function(this: Map<any, any>) {
+//   const json: any = {}
+//   for (const [k, v] of this) json[k] = v
+//   return json
+// }
+// ;(Map.prototype  as any).toJSON = Map.prototype.to_json_hook
 
 
 // deep_map ----------------------------------------------------------------------------------------

@@ -5,7 +5,7 @@ import { sql, SQL, sqlToString } from "./sql.ts"
 import * as bash from "base/bash.ts"
 import { Pool, PoolClient } from "postgres/mod.ts"
 import { DbTable } from "./db_table.ts"
-import { formatTime } from "base/time.ts"
+import { Time } from "base/time.ts"
 
 // Hiding notice warnings, should be removed when issue fixed
 // https://github.com/denodrivers/postgres/issues/254
@@ -269,13 +269,13 @@ slow_test("Db", async () => {
   {
     const now = new Date()
     await db.exec(sql`insert into times (id, time) values ('a', ${now})`)
-    await db.exec(sql`insert into times (id, time) values ('b', ${formatTime(now)})`)
+    await db.exec(sql`insert into times (id, time) values ('b', ${new Time(now)})`)
 
     const a = await db.getValue<Date>(sql`select time from times where id = 'a'`)
     const b = await db.getValue<Date>(sql`select time from times where id = 'b'`)
     assert(a instanceof Date)
     assert(b instanceof Date)
-    assert.equal(formatTime(a), formatTime(b))
+    assert.equal(new Time(a).to_s(), new Time(b).to_s())
   }
 
   await db.close()
