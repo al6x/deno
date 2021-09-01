@@ -114,6 +114,7 @@ declare global {
   function is_number(v: unknown): v is number
   function is_array(v: unknown): v is unknown[]
   function is_string(v: unknown): v is string
+  function is_boolean(v: unknown): v is boolean
   function is_object(v: unknown): v is { [key: string]: any }
   function is_function(v: unknown): v is Function
   function is_promise(v: unknown): v is Promise<any>
@@ -150,6 +151,7 @@ window.is_number    = function(v: unknown): v is number {
 }
 window.is_array     = function(v: unknown): v is unknown[] { return Array.isArray(v) }
 window.is_string    = function(v: unknown): v is string { return typeof v == 'string'}
+window.is_boolean   = function(v: unknown): v is boolean { return typeof v == 'boolean'}
 window.is_object    = function(v: unknown): v is { [key: string]: any } {
   return typeof v == 'object' && v !== null
 }
@@ -308,8 +310,8 @@ declare global {
     has(v: T): boolean
     has(f: (v: T, i: number) => boolean): boolean
 
-    group_by(f: (v: T, i: number) => number): Map<number, T[]>
-    group_by(f: (v: T, i: number) => string): Map<string, T[]>
+    group_by(f: (v: T, i: number) => number): Hash<T[], number>
+    group_by(f: (v: T, i: number) => string): Hash<T[], string>
 
     i(v: T): number | undefined
     i(f: (v: T, i: number) => boolean): number | undefined
@@ -317,6 +319,11 @@ declare global {
     take(n: number): Array<T>
 
     filter_map<R>(fn: (v: T, i: number) => R | undefined): R[]
+
+    sample(n: number): T[]
+
+    // Converts tidydata to compressed columnar format
+    to_columns<T extends object>(this: T[], skip?: string[]): { [key: string]: any[] }
 
     skip_undefined<T>(this: (T | undefined)[]): T[]
 
@@ -410,17 +417,11 @@ extend(Array.prototype, {
     return false
   },
 
-  group_by<T, K extends string | number>(this: T[], f: (v: T, i: number) => K): Map<K, T[]> {
-    const map = new Map<K, T[]>()
+  group_by<T, K extends string | number>(this: T[], f: (v: T, i: number) => K): Hash<T[], K> {
+    const map = new Hash<T[], K>()
     for (let i = 0; i < this.length; i++) {
       const v = this[i]
-      const key = f(v, i)
-      let group = map.get(key)
-      if (!group) {
-        group = []
-        map.set(key, group)
-      }
-      group.push(v)
+      map.getm(f(v, i), []).push(v)
     }
     return map
   },
@@ -442,6 +443,23 @@ extend(Array.prototype, {
       if (r !== undefined) filtered.push(r)
     }
     return filtered
+  },
+
+  sample<T>(this: T[], n: number): T[] {
+    return this.shuffle().take(n)
+  },
+
+  to_columns<T extends object>(this: T[], skip?: string[]): { [key: string]: any[] } {
+    const keys = new Set<string>(), result: { [key: string]: any[] } = {}
+    for (const o of this) for (const k in o) if (o.hasOwnProperty(k)) keys.add(k)
+    for (const k of skip || []) keys.delete(k)
+    for (const k of keys) result[k] = []
+    for (const o of this) {
+      for (const k of keys) {
+        result[k].push(k in o ? (o as any)[k] : undefined)
+      }
+    }
+    return result
   },
 
   skip_undefined<T>(this: (T | undefined)[]): T[] {
@@ -522,7 +540,7 @@ extend(Array.prototype, {
       let minf = f(this[0]), mini = 0
       for (let i = 0; i < this.length; i++) {
         const v = this[i], fv = f(v)
-        if (fv > minf) {
+        if (fv < minf) {
           minf = fv; mini = i
         }
       }
@@ -531,7 +549,7 @@ extend(Array.prototype, {
       let min = this[0], mini = 0
       for (let i = 0; i < this.length; i++) {
         const v = this[i]
-        if (v.compare(min) > 0) {
+        if (v.compare(min) < 0) {
           min = v; mini = i
         }
       }
@@ -550,6 +568,7 @@ extend(Array.prototype, {
   },
 
   quantile(this: number[], q: number, is_sorted = false): number {
+    if (this.length == 0) throw new Error("can't calculate quantile on empty array")
     const sorted = is_sorted ? this : [...this].sort((a, b) => a - b)
     const pos = (sorted.length - 1) * q
     const base = Math.floor(pos)
@@ -687,6 +706,8 @@ declare global {
 
     clone(): Hash<V, K>
 
+    to_a(): [K, V][]
+
     to_json_hook(): { [key: string]: V }
 
     static from_json_hook<V, K = string>(this: { new: Hash<V, K> }, json: { [k: string]: V }): Hash<V, K>
@@ -778,6 +799,12 @@ declare global {
   has(k: K): boolean { return this.m.has(k) }
 
   clone(): Hash<V, K> { return new Hash(this) }
+
+  to_a(): [K, V][] {
+    const results: [K, V][] = []
+    for (const entry of this.m) results.push(entry)
+    return results
+  }
 
   to_json_hook(): { [key: string]: V } {
     const h: { [key: string]: V } = {}
@@ -1453,6 +1480,40 @@ export class NeverError extends Error {
   constructor(message: never) { super(`NeverError: ${message}`) }
 }
 
+export async function parallel<In, Out>(
+  tasks: In[], process: (arg: In, i: number) => Promise<Out>, workers: number
+): Promise<E<Out>[]> {
+  return new Promise<E<Out>[]>((resolve) => {
+    const results: E<Out>[] = []
+    let next_i = 0, in_process = 0
+    function try_process_next(): void {
+      if (in_process >= workers) return
+      if (next_i == tasks.length) return resolve(results)
+      const i = next_i
+      next_i++
+      try {
+        in_process++
+        process(tasks[i], i)
+          .then((value) => {
+            results[i] = { is_error: false, value: value! }
+            in_process--
+            try_process_next()
+          })
+          .catch((e) => {
+            results[i] = { is_error: true, message: ensure_error(e).message }
+            in_process--
+            try_process_next()
+          })
+      } catch (e) {
+        results[i] = { is_error: true, message: ensure_error(e).message }
+        in_process--
+        try_process_next()
+      }
+      try_process_next()
+    }
+    try_process_next()
+  })
+}
 
 // Promise -----------------------------------------------------------------------------------------
 // For better logging, by default promise would be logged as `{}`

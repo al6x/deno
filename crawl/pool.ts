@@ -64,7 +64,8 @@ export class Pool {
 
     await fs.remove_mp_dir(this.page_options.tmp_dir)
 
-    this.log.debug('opening page')
+    this.log.debug('creating page')
+    // p(driver_default_import.executablePath())
     this.browser = await driver_default_import.launch({
       headless:        this.options.headless,
       defaultViewport: { width: 1280, height: 800 },
@@ -88,16 +89,14 @@ export class Pool {
   }
 
   with_page = async<T> (cb: ((page: Page) => Promise<T>), retry = false): Promise<T> => {
-    this.page_used_count += 1
-
     // Delay, except for the very first call
     if (this.is_first_call) this.is_first_call = false
     else                    await this.options.delay()
 
     // Checking if page used too much and should be re-created
-    if (this.page_used_count > this.options.page_used_count) await this.close_page()
-
+    if (this.page_used_count >= this.options.page_used_count) await this.close_page()
     if (!this.page) this.page = await this.create_new_page_and_close_existing()
+    this.page_used_count += 1
 
     try {
       return await cb(this.page)

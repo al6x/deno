@@ -5,8 +5,8 @@ const { red, yellow, gray: grey } = colors
 
 export const logConfig = {
   log:         get_env("log", "true") != "false",
-  disableLogs: new Set(get_env("disable_logs", "").split(",")),
-  logAsDebug:  new Set(get_env("log_as_debug", "").split(",")),
+  disableLogs: new Set(get_env("disable_logs", "").split(",").filter((v) => v != "")),
+  logAsDebug:  new Set(get_env("log_as_debug", "").split(",").filter((v) => v != "")),
   logData:     get_env("log_data", "false") == "true"
 }
 
@@ -166,14 +166,14 @@ export type LogFn = ((log: Log) => void) | string | undefined
 
 
 // Shortcuts ----------------------------------------------------------------------------------------
-export function debug(message: string): void { new Log("Main").debug(message) }
+export function debug(message: string): void { new Log("").debug(message) }
 
-export function info(message: string): void { new Log("Main").info(message) }
+export function info(message: string): void { new Log("").info(message) }
 
-export function warn(message: string): void { new Log("Main").warn(message) }
+export function warn(message: string): void { new Log("").warn(message) }
 
 export function error(message: string, exception: Error | undefined = undefined): void {
-  let log = new Log("Main")
+  let log = new Log("")
   if (exception != undefined) log = log.with(exception)
   log.error(message)
 }

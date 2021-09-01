@@ -19,7 +19,7 @@ export function secureRandomHash(lengthB = 32): string {
   return encodeBase58(data)
 }
 
-export async function fileHash(path: string, algo: 'md5' | 'sha256'): Promise<string> {
+export async function file_hash(path: string, algo: 'md5' | 'sha256'): Promise<string> {
   let file: any
   try {
     file = await Deno.open(path)

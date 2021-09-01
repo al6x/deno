@@ -1,7 +1,7 @@
 import './base.ts'
 import * as deps from './deps.ts'
 
-export type EntryType = 'directory' | 'file' // | 'link'
+export type EntryType = 'dir' | 'file' // | 'link'
 export type Entry = { type: EntryType, name: string }
 
 
@@ -15,7 +15,7 @@ export async function read_dir(path: string, filter?: (entry: Entry) => boolean)
   for await (const entry of Deno.readDir(path)) {
     let type: EntryType
     if (entry.isFile)           type = 'file'
-    else if (entry.isDirectory) type = 'directory'
+    else if (entry.isDirectory) type = 'dir'
     else                        throw new Error("todo symlink not implemented")
     entries.push({ type, name: entry.name })
   }
@@ -27,7 +27,12 @@ export async function read_dir(path: string, filter?: (entry: Entry) => boolean)
 function read_file(path: string): Promise<Uint8Array>
 function read_file(path: string, options: { encoding: string }): Promise<string>
 async function read_file(path: string, options?: any) {
-  const buffer = await Deno.readFile(path)
+  let buffer
+  try {
+    buffer = await Deno.readFile(path)
+  } catch (e) {
+    throw new Error(`can't read file '${path}', ${ensure_error(e).message}`)
+  }
   if (options) {
     const decoder = new TextDecoder(options.encoding)
     return decoder.decode(buffer)
@@ -162,6 +167,7 @@ export async function create_dir(path: string) { await deps.fs.ensureDir(path) }
 
 
 // exists ------------------------------------------------------------------------------------------
+export async function exist(path: string): Promise<boolean> { return deps.fs.exists(path) }
 export async function exists(path: string): Promise<boolean> { return deps.fs.exists(path) }
 
 
@@ -228,9 +234,15 @@ export async function create_tmp_dir(prefix: string): Promise<string> {
 export async function get_type(path: string): Promise<EntryType> {
   const stat = await Deno.stat(path)
   if      (stat.isFile)         return 'file'
-  else if (stat.isDirectory)    return 'directory'
-  else
-    throw new Error(`usnupported fs entry type '${JSON.stringify(stat)}' for '${path}'`)
+  else if (stat.isDirectory)    return 'dir'
+  else throw new Error(`usnupported fs entry type '${JSON.stringify(stat)}' for '${path}'`)
+}
+
+
+export async function get_size_bytes(path: string): Promise<number> { // in bytes
+  const stat = await Deno.stat(path)
+  if (stat.isFile) return stat.size
+  else throw new Error(`usnupported fs entry type '${JSON.stringify(stat)}' for '${path}'`)
 }
 
 

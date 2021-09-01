@@ -11,7 +11,7 @@ export async function assetHashSlow(path: string, assetFilePaths: string[]): Pro
   for (const assetFilePath of assetFilePaths) {
     let fullPath = stdpath.join(assetFilePath, path)
     if (await fs.exists(fullPath)) {
-      return (await crypto.fileHash(fullPath, "md5")).take(6)
+      return (await crypto.file_hash(fullPath, "md5")).take(6)
     }
   }
   throw new Error(`Asset file not found, ${path}`)

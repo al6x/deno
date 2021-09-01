@@ -88,18 +88,20 @@ export class Frame extends AbstractFrame {
 
 // Page --------------------------------------------------------------------------------------------
 export interface PageOptions {
-  readonly show:       boolean
-  readonly block:      (RegExp | ((url: string) => boolean))[]
-  readonly timeout_ms: number
-  readonly tmp_dir:    string // Will be created automatically
-  readonly id?:        string // Used for logging
+  readonly show:            boolean
+  readonly block:           (RegExp | ((url: string) => boolean))[]
+  readonly timeout_ms:      number
+  readonly tmp_dir:         string // Will be created automatically
+  readonly id?:             string // Used for logging
+  readonly allow_redirects: boolean
 }
 
 const default_options = {
   show:       false,
   block:      block_urls,
-  timeout_ms: 30 * 1000
+  timeout_ms: 30 * 1000,
   // log:        true
+  allow_redirects: true
 }
 
 export const to_page_options = (options: Partial<PageOptions>): PageOptions => {
@@ -123,14 +125,24 @@ export class Page extends AbstractFrame {
 
   protected async prepare() {
     await this.page.setRequestInterception(true)
-    this.page.on('request', (request) => {
-      const url = request.url(), isBlocked = this.is_blocked(url)
-      if (isBlocked) {
-        request.abort()
-      } else {
-        // this.log('debug', `loading ${url}`)
-        request.continue()
+    this.page.on('request', (req) => {
+      const url = req.url()
+
+      // Preventing redirects
+      if (!this.options.allow_redirects && req.isNavigationRequest() && req.redirectChain().length !== 0) {
+        this.log.debug(`preventing redirect to ${url}`)
+        req.abort()
+        return
       }
+
+      // Blocking unwanted urls
+      if (this.is_blocked(url)) {
+        req.abort()
+        return
+      }
+
+      this.log.debug(`loading ${url}`)
+      req.continue()
     })
   }
 
@@ -139,7 +151,12 @@ export class Page extends AbstractFrame {
   async goto(url: string): Promise<void> {
     this.log.debug(`opening ${url}`)
     await this.frame.goto(url, { waitUntil: 'domcontentloaded', timeout: this.options.timeout_ms })
-    await this.frame.addStyleTag({ content: build_styles() })
+    try {
+      await this.frame.addStyleTag({ content: build_styles() })
+    } catch (e) {
+      // Sometimes it doesn't work, like when XML page opened
+      this.log.debug(`can't add styles to ${url}`)
+    }
   }
 
   async save_as_file(path: string, callback: () => Promise<void>, abort?: IsDownloadAborted): Promise<void> {
@@ -251,14 +268,16 @@ export class Page extends AbstractFrame {
 
   frames() { return this.page.mainFrame().childFrames().map((frame) => new Frame(this, frame, this.options)) }
 
-  wait_until<T>(condition: () => boolean,              custom_delay_ms?: number): Promise<void>
-  wait_until<T>(condition: () => Promise<boolean>,     custom_delay_ms?: number): Promise<void>
-  wait_until<T>(condition: () => Promise<boolean | T>, custom_delay_ms?: number): Promise<T>
-  async wait_until<T>(condition: () => boolean | Promise<boolean | T>, custom_delay_ms?: number) {
+  wait_until<T>(condition: (waited_ms: number) => boolean,              custom_delay_ms?: number): Promise<void>
+  wait_until<T>(condition: (waited_ms: number) => Promise<boolean>,     custom_delay_ms?: number): Promise<void>
+  wait_until<T>(condition: (waited_ms: number) => Promise<boolean | T>, custom_delay_ms?: number): Promise<T>
+  async wait_until<T>(
+    condition: (waited_ms: number) => boolean | Promise<boolean | T>, custom_delay_ms?: number
+  ) {
     const started = Date.now()
     let delay = 10
     while (true) {
-      const unresolved_result = condition()
+      const unresolved_result = condition(Date.now() - started)
       const result = unresolved_result instanceof Promise ? await unresolved_result : unresolved_result
       if (result !== false) return result as any
 
@@ -387,6 +406,13 @@ export class PElement {
   async attr(name: string): Promise<string> {
     const result = await this.evaluate((element, name) => element.getAttribute(name), name)
     return result === undefined || result === null ? '' : '' + result
+  }
+
+  async map<T>(query: string, fn: (e: PElement) => Promise<T>): Promise<T[]> {
+    const elements = await this.find(query)
+    const results: T[] = []
+    for (const el of elements) results.push(await fn(el))
+    return results
   }
 
   async text(): Promise<string> {

@@ -57,6 +57,8 @@ const garbage_domains = `appunification
   googleadservices
   jwpcdn
   aimatch
+  branch
+  raygun
   jwpcdn`
 
 export function build_re_for_domains(domains: string) {

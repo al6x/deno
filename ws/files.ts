@@ -47,7 +47,7 @@ export class Files {
     this.log
       .with({ user_id, project_id, path })
       .info("save_file {user_id}.{project_id} {path}")
-    const hash = await crypto.fileHash(fromPath, "sha256")
+    const hash = await crypto.file_hash(fromPath, "sha256")
 
     const fstats = await Deno.stat(fromPath)
     if (!fstats.isFile) throw new Error("internal error, file expected")
