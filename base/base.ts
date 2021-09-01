@@ -370,9 +370,9 @@ declare global {
     shuffle(random?: () => number): T[]
 
     asc<CT extends T & { compare(other: T): number }>(this: CT[]): CT[]
-    asc<K extends string | number | boolean>(by: (v: T) => string | number | boolean): T[]
+    asc(by: (v: T) => string | number | boolean): T[]
     // sort_by deprecated, use asc
-    sort_by<K extends string | number | boolean>(by: (v: T) => string | number | boolean): T[]
+    // sort_by<K extends string | number | boolean>(by: (v: T) => string | number | boolean): T[]
 
     sum(this: number[]): number
 
@@ -624,7 +624,7 @@ extend(Array.prototype, {
     }
   },
 
-  sort_by,
+  // sort_by,
 
   sum(this: number[]): number {
     let sum = 0

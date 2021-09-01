@@ -139,7 +139,7 @@ export function buildWhere<T>(where: Where<T>, ids: string[]): SQL {
     for (const id of ids) if (!(id in where)) isT = false
 
     let fields = isT ? Object.keys(where).filter((n) => ids.includes(n)) : Object.keys(where)
-    const conditions = fields.sort_by((n) => n).map((name) => `${name} = :${name}`).join(" and ")
+    const conditions = fields.asc((n) => n).map((name) => `${name} = :${name}`).join(" and ")
     return sql(conditions, where as any, !isT)
   } else if (typeof where == "number" || typeof where == "string" || typeof where == "boolean") {
     return sql`id = ${where}`
