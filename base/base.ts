@@ -294,6 +294,9 @@ extend(Object.prototype, {
 declare global {
   interface ArrayConstructor {
     fill<T>(size: number, v: T | ((i: number) => T)): T[]
+
+    // Converts compressed columnar data to TidyData
+    from_columns<T>(columns: { [key: string]: any[] }): T[]
   }
 
   interface Array<T> {
@@ -387,6 +390,24 @@ Array.fill = function fill<T>(size: number, v: T | ((i: number) => T)): T[] {
   const list: T[] = []
   for (let i = 0; i < size; i++) list.push(f(i))
   return list
+}
+
+Array.from_columns = function from_columns<T>(columns: { [key: string]: any[] }): T[] {
+  const results: T[] = [], keys = Object.keys(columns)
+  if (keys.length == 0) return results
+  const l = columns[keys[0]].length
+  for (const key of keys) {
+    if (columns[key].length != l) throw new Error(`columns ${keys[0]} and ${key} have different length`)
+  }
+  for (let i = 0; i < l; i++) {
+    const o: any = {}
+    for (const key of keys) {
+      const v = columns[key][i]
+      if (v !== null && v !== undefined) o[key] = v
+    }
+    results.push(o)
+  }
+  return results
 }
 
 extend(Array.prototype, {
